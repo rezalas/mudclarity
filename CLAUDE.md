@@ -24,17 +24,24 @@ mudclarity/
 ├── mudclarity.odin          # Main entry point (package main)
 ├── build.sh                 # Build script
 ├── formats/                 # package formats: reading .are files
-│   ├── reader.odin          # Cursor over file bytes (read_string/word/number/flags)
-│   ├── area_parser.odin     # Section dispatch (#AREA, #MOBS, #ROOMS, ...)
-│   └── validators.odin      # Cross-reference and consistency checks
+│   ├── reader.odin          # Byte cursor porting fread_* (string/word/number/flags)
+│   ├── errors.odin          # Parse_Error / Parse_Failure
+│   ├── tables.odin          # Item type and direction tables mirrored from Riftshadow
+│   ├── area_parser.odin     # Section dispatch, #AREA/#ROOMS/#RESETS/#IMPROGS/#SPECS
+│   ├── mobile_parser.odin   # #MOBS
+│   ├── object_parser.odin   # #OBJS
+│   ├── area_list.odin       # area.lst
+│   ├── loaded_area.odin     # Loaded_Area: an area plus the arena it lives in
+│   └── *_test.odin          # Tests (only compiled by `odin test`)
 ├── models/                  # package models: parsed data structures
-│   ├── area.odin            # Area metadata
+│   ├── area.odin            # Area and its header
 │   ├── room.odin            # Rooms and exits
 │   ├── mobile.odin          # NPC definitions
 │   ├── object.odin          # Item definitions
 │   ├── reset.odin           # Reset commands
-│   └── types.odin           # Shared types (Direction, Vnum, ...)
-├── test_data/               # Sample .are files for tests
+│   ├── program.odin         # #IMPROGS / #SPECS bindings
+│   └── types.odin           # Shared types (Direction, Dice, ...)
+├── test_data/               # Real and hand-made .are files for tests
 ├── vendor/skald/            # Skald GUI library (git submodule)
 └── CLAUDE.md                # This file
 ```
@@ -52,7 +59,12 @@ The source of truth is the Riftshadow loader, not the sample files:
 - Flag and direction names: `riftshadow/code/tables.c`
 
 Area files live in `/Users/paulmcdowell/Documents/source/paul/riftshadow/area/`.
-The files the game loads are listed in `area.lst` (terminated by `$`).
+The files the game loads are listed in `area.lst` (terminated by `$`). Note:
+
+- `area.lst` uses bare-CR line endings; some area files use CRLF.
+- A few files contain Latin-1 bytes, so treat input as bytes, never UTF-8.
+- `midgaard.are` is *not* in `area.lst`, but it is in Riftshadow's format and
+  is a good reference (it is a test fixture).
 
 ### Sections Riftshadow loads
 
@@ -84,6 +96,17 @@ the other listed areas instead.
   `fread_word`, `fread_number`, and `fread_flag_new`, not a separate lexer.
 - Vnums are stored in a C `short` (max 32767). Mob, object, and room vnums are
   separate namespaces, and room vnums must be unique across *all* areas.
+- Many fields are read as a *letter* followed by a *word*, so the word is the
+  rest of the keyword: `ROOM LAW` is `R` + `OOM` + `LAW`, and the object
+  keyword `NAMEOFLOC` is compared as `AMEOFLOC`. Only the first letter
+  decides the field, which is why `ITEM`, `APPLY` and `MSG` work.
+- Room and object field letters are case-insensitive; mob trailer letters
+  (`F A C B N L S T Y`) are case-sensitive.
+- An object's item type is a case-insensitive *prefix* lookup in `item_table`
+  order (`const.c`), and it decides how the five values are read. Unknown
+  types read five flag values.
+- `#IMPROGS` lines starting with `S` are skipped by the game; they have no
+  effect (the parser records them so a validator can flag them).
 
 ### `#AREA` (from `load_area`)
 
@@ -275,12 +298,14 @@ Checks to implement:
 ```bash
 ./build.sh          # Debug build to build/mudclarity
 ./build.sh run      # Build and run
+./build.sh test     # Vet and run tests (see Testing)
+./build/mudclarity file.are ...   # Until the GUI exists: parse and summarize files
 
 # Manual
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
-# Type-check only
-odin check . -collection:gui=./vendor/skald
+# Type-check only. Vet only our packages: vendor/skald does not pass -vet.
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models
 ```
 
 ### Dependencies
@@ -295,23 +320,34 @@ Build output goes to `build/` (gitignored).
 
 ## Testing
 
-Use Odin's built-in test runner (`core:testing`):
-
 ```bash
-odin test formats -collection:gui=./vendor/skald
+./build.sh test                     # vet main/formats/models, then run all tests
+RIFTSHADOW_AREA_DIR=/Users/paulmcdowell/Documents/source/paul/riftshadow/area \
+    ./build.sh test                 # also parse every area in area.lst
+
+# Run selected tests
+odin test formats -define:ODIN_TEST_NAMES=formats.test_room_basic_fields
 ```
 
-Test data under `test_data/` should be copied or trimmed from real Riftshadow
-areas, plus hand-made broken files:
+Tests live next to the code as `formats/*_test.odin` (package `formats`, so
+private procedures are testable). The test runner tracks memory, so leaks fail
+a test. Every change to the parser needs tests:
 
-```text
-test_data/
-├── valid/       # e.g. trimmed midgaard.are, a minimal area
-└── invalid/     # missing #AREA, unterminated string, bad direction,
-                 # duplicate vnum, broken exit, bad reset
-```
+- **Unit tests** (`reader_test`, `area_parser_test`, `mobile_parser_test`,
+  `object_parser_test`, `area_list_test`, `loading_test`): small inline
+  inputs built with `with_header(...)`; error tests check the kind *and* line.
+- **Golden tests** (`golden_test`): real files in `test_data/valid/` embedded
+  with `#load`. Expected counts were checked with `awk`/`grep`, not the parser.
+- **Fuzz tests** (`fuzz_test`): every truncation and seeded random mutations
+  of a fixture must parse or fail cleanly, never crash or hang.
+- **Corpus test** (`corpus_test`): with `RIFTSHADOW_AREA_DIR` set, all of
+  `area.lst` must parse within the performance budget.
 
-As a smoke test, every file in `area.lst` should parse without errors.
+When the corpus test fails on real data, fix the parser by reading the
+Riftshadow loader, then add a unit test for that case.
+
+`test_data/invalid/` holds files the parser must reject (e.g. the legacy ROM
+`school.are`). `test_data/` files are Riftshadow areas (MIT licensed).
 
 ## Security & Robustness
 
@@ -333,7 +369,7 @@ and reject entries containing path separators or `..`.
 
 ### Review Checklist
 
-- [ ] `odin check` passes (consider `-vet -strict-style`)
+- [ ] `./build.sh test` passes (vets our packages; tests use `-vet -strict-style`)
 - [ ] Follows naming and style conventions
 - [ ] No ignored error returns
 - [ ] Bounds checks on input-derived indexing
