@@ -34,6 +34,13 @@ mudclarity/
 │   ├── loaded_area.odin     # Loaded_Area: an area plus the arena it lives in
 │   ├── area_set.odin        # Area_Set: every area in an area.lst
 │   └── *_test.odin          # Tests (only compiled by `odin test`)
+├── clarity/                 # package clarity: the .clarity review file
+│   ├── document.odin        # Document format (JSON, version 1)
+│   ├── io.odin              # Load (with checks) and atomic, sorted save
+│   ├── hash.odin            # SHA-256 of area files
+│   ├── review.odin          # Finding keys/ids; merge a run with the file
+│   ├── edit.odin            # Reviews, issues, notes, refresh
+│   └── *_test.odin
 ├── validation/              # package validation: checks on a set of areas
 │   ├── validate.odin        # validate() entry point
 │   ├── world.odin           # Vnum indexes, completeness rule
@@ -54,7 +61,7 @@ mudclarity/
 └── CLAUDE.md                # This file
 ```
 
-Dependency direction: `main` → `validation` → `formats` → `models`. Odin forbids cyclic
+Dependency direction: `main` → `clarity` → `validation` → `formats` → `models`. Odin forbids cyclic
 package imports, so `models` must not import `formats`.
 
 ## Area File Format
@@ -324,6 +331,37 @@ Calibration notes from the real data:
 The room graph's edges are exits to existing rooms plus portals placed by
 `OBJ` resets. Self-loops are ignored.
 
+## Review File (`.clarity`)
+
+One `area.clarity` per world, next to `area.lst`: pretty-printed JSON
+(version 1) recording the files covered (SHA-256, size, counts), decisions on
+findings, the user's issues and notes, and a snapshot of the last saved run.
+It is the user's data: never drop entries you don't understand, and refuse
+(don't overwrite) a newer `version`.
+
+- **Finding key** = `(file, check, vnum, related_vnum)`, never the line, so
+  decisions survive edits. Printed as an id: `mtcim.are:Mismatched_Return:218:219`.
+- **States** when merged with a run: `Open` (no decision), `Accepted`
+  (intended; hidden by default), `Flagged` (to fix), `Needs_Review` (decided,
+  but the file's hash has changed since). A decision whose finding is gone
+  is reported as *resolved*.
+- **Snapshot** from the last `save`: findings not in it are *new*, entries
+  no longer found are *fixed*.
+- Names are stored as strings (checks, statuses, kinds `area|room|mob|object`).
+  Every list is saved sorted, so an unchanged save is byte-identical and git
+  diffs stay small. Saves go to a temp file and are renamed into place.
+
+```bash
+mudclarity save   area.lst                       # record files, hashes, snapshot
+mudclarity accept area.lst <id> [note]           # intended (e.g. a deliberate maze)
+mudclarity flag   area.lst <id> [note]           # confirmed problem
+mudclarity reopen area.lst <id>
+mudclarity note   area.lst <file> <kind> <vnum> <text>
+mudclarity issue  area.lst <file> <kind> <vnum> <title>
+```
+
+`check` exits 1 only for parse failures or errors that aren't accepted.
+
 ## Visualization (Skald)
 
 - Skald renders with **Vulkan + SDL3**, not raylib. Do not add raylib; draw the
@@ -347,6 +385,7 @@ The room graph's edges are exits to existing rooms plus portals placed by
 ./build.sh test     # Vet and run tests (see Testing)
 ./build/mudclarity path/to/area.lst   # Until the GUI exists: validate the whole world
 ./build/mudclarity file.are ...       # ...or just these files
+./build/mudclarity                    # Usage, including the review commands below
 
 # Manual
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
@@ -393,6 +432,14 @@ Every change needs tests.
   of a fixture must parse or fail cleanly, never crash or hang.
 - **Corpus test** (`corpus_test`): with `RIFTSHADOW_AREA_DIR` set, all of
   `area.lst` must parse within the performance budget.
+
+**Review file (`clarity/`)**
+
+- Round trip is byte-identical; load errors (bad JSON, format, version,
+  names, enum values, duplicate issue ids) are each tested; saves are atomic.
+- Merge states, snapshot new/fixed, added/removed/changed files, and edits
+  use small worlds from `world_make(...)`.
+- Corpus test saves and reloads a review of the whole world in a temp dir.
 
 **Validators (`validation/`)**
 

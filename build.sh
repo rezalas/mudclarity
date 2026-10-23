@@ -15,13 +15,17 @@ mkdir -p build
 SKALD_ROOT="./vendor/skald"
 
 if [[ "${1:-}" == "test" ]]; then
-    odin check . -collection:gui="${SKALD_ROOT}" -vet -vet-style -vet-packages:main,formats,models,validation
+    # -thread-count:1 works around a race in the dev-2026-06 compiler: the
+    # multithreaded -vet pass over the whole program (including Skald)
+    # segfaults in roughly 1 run in 10. Single-threaded costs ~40 ms.
+    odin check . -collection:gui="${SKALD_ROOT}" -vet -vet-style \
+        -vet-packages:main,formats,models,validation,clarity -thread-count:1
 
     CORPUS_DEFINE=()
     if [[ -n "${RIFTSHADOW_AREA_DIR:-}" ]]; then
         CORPUS_DEFINE=(-define:MUDCLARITY_CORPUS_DIR="${RIFTSHADOW_AREA_DIR}")
     fi
-    for package in formats validation; do
+    for package in formats validation clarity; do
         odin test "${package}" \
             -collection:gui="${SKALD_ROOT}" \
             -vet -strict-style \
