@@ -1,0 +1,21 @@
+# Build output
+build/
+*.exe
+*.pdb
+*.dSYM/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+
+# Local environment
+*.env
