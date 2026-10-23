@@ -280,7 +280,7 @@ loaded area's range; otherwise it is Info ("may be in an area that isn't
 loaded"). This lets a single area be checked without false alarms.
 
 | Check | Severity | Rule (game code) |
-|---|---|---|
+| --- | --- | --- |
 | Broken_Exit | Error/Info | Exit to a missing room or negative vnum (`fix_exits`) |
 | Mismatched_Return | Warning | A→B, but B's reverse exit leads elsewhere (disabled check in `fix_exits`) |
 | One_Way_Exit | Info | A→B and B has no exit back to A in any direction |
@@ -314,6 +314,12 @@ Calibration notes from the real data:
 - Rooms reached only by programs, recall or staff commands (e.g. midgaard's
   pet shop storage, 3032) are reported as orphans; that's accurate, if
   intended.
+- The game has **deliberate mazes** (mismatched and one-way exits by design)
+  and **areas reachable only by teleport** (orphan, unreachable or
+  entrance-less on purpose). Do not weaken or suppress these checks to make
+  them go away: surfacing them is the point, and the user decides in the
+  visualizer which are intended. Intended findings are recorded as accepted,
+  not removed from the validator.
 
 The room graph's edges are exits to existing rooms plus portals placed by
 `OBJ` resets. Self-loops are ignored.
