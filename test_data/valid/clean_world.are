@@ -1,0 +1,130 @@
+#AREA
+clean_world.are~
+Clean World~
+Mud Clarity~
+1 20
+500 509
+normal
+temperate
+0
+1
+None~
+
+#MOBS
+#500
+guard~
+the guard~
+A guard stands here.
+~
+~
+0 0 0 human~
+10 2d8+100 1d6+2 0 0 hit
+0 0 0 0
+standing male none
+0 0 medium
+ACT NPC
+#0
+
+#OBJS
+#500
+iron key~
+an iron key~
+An iron key lies here.~
+key
+iron~
+0 0 0 0 0
+1 1 10 P
+WEAR TAKE
+#501
+wooden chest~
+a wooden chest~
+A wooden chest sits here.~
+container
+wood~
+50 0 0 10 100
+1 20 50 P
+#502
+coin~
+a gold coin~
+A gold coin lies here.~
+treasure
+gold~
+0 0 0 0 0
+1 1 1 P
+WEAR TAKE
+#503
+shimmering portal~
+a shimmering portal~
+A shimmering portal hangs in the air.~
+portal
+energy~
+-1 0 0 500 0
+1 0 0 P
+#504
+short sword~
+a short sword~
+A short sword lies here.~
+weapon
+iron~
+sword 2 6 slash 0
+1 5 20 P
+WEAR TAKE
+WEAR WIELD
+#0
+
+#ROOMS
+#500
+Gatehouse~
+A sturdy gatehouse.
+~
+inside
+D NORTH 501 0 0
+~
+~
+D EAST 502 ABC 500
+gate~
+~
+S
+#501
+Courtyard~
+An open courtyard.
+~
+city
+D SOUTH 500 0 0
+~
+~
+D WEST 0 0 0
+~
+A high wall.
+~
+S
+#502
+Vault~
+A small vault.
+~
+inside
+D WEST 500 ABC 500
+gate~
+~
+S
+#0
+
+#RESETS
+MOB 500 TO 500 GLIMIT 1 LLIMIT 1
+EQUIP 504 WIELD
+GIVE 500
+OBJ 501 TO 502
+PUT 502 IN 501 COUNT 1
+OBJ 503 TO 502
+DOOR 500 EAST LOCKED
+DOOR 502 WEST LOCKED
+S
+
+#IMPROGS
+M 500 pulse_prog pulse_prog_guard
+R 501 entry_prog entry_prog_courtyard
+END
+#SPECS
+M 500 spec_guard
+END
+#$
