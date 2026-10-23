@@ -1,0 +1,3 @@
+[submodule "vendor/skald"]
+	path = vendor/skald
+	url = https://github.com/BuLEEto/Skald.git
