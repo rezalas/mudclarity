@@ -15,17 +15,20 @@ mkdir -p build
 SKALD_ROOT="./vendor/skald"
 
 if [[ "${1:-}" == "test" ]]; then
-    odin check . -collection:gui="${SKALD_ROOT}" -vet -vet-style -vet-packages:main,formats,models
+    odin check . -collection:gui="${SKALD_ROOT}" -vet -vet-style -vet-packages:main,formats,models,validation
 
     CORPUS_DEFINE=()
     if [[ -n "${RIFTSHADOW_AREA_DIR:-}" ]]; then
         CORPUS_DEFINE=(-define:MUDCLARITY_CORPUS_DIR="${RIFTSHADOW_AREA_DIR}")
     fi
-    exec odin test formats \
-        -collection:gui="${SKALD_ROOT}" \
-        -vet -strict-style \
-        "${CORPUS_DEFINE[@]+"${CORPUS_DEFINE[@]}"}" \
-        -out:build/formats_test
+    for package in formats validation; do
+        odin test "${package}" \
+            -collection:gui="${SKALD_ROOT}" \
+            -vet -strict-style \
+            "${CORPUS_DEFINE[@]+"${CORPUS_DEFINE[@]}"}" \
+            -out:"build/${package}_test"
+    done
+    exit 0
 fi
 
 odin build . \

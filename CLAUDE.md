@@ -32,7 +32,15 @@ mudclarity/
 │   ├── object_parser.odin   # #OBJS
 │   ├── area_list.odin       # area.lst
 │   ├── loaded_area.odin     # Loaded_Area: an area plus the arena it lives in
+│   ├── area_set.odin        # Area_Set: every area in an area.lst
 │   └── *_test.odin          # Tests (only compiled by `odin test`)
+├── validation/              # package validation: checks on a set of areas
+│   ├── validate.odin        # validate() entry point
+│   ├── world.odin           # Vnum indexes, completeness rule
+│   ├── exits.odin           # Exits, doors, keys
+│   ├── resets.odin          # Resets, portals, programs, records
+│   ├── reachability.odin    # Room graph: dead ends, orphans, entrances
+│   └── *_test.odin
 ├── models/                  # package models: parsed data structures
 │   ├── area.odin            # Area and its header
 │   ├── room.odin            # Rooms and exits
@@ -46,7 +54,7 @@ mudclarity/
 └── CLAUDE.md                # This file
 ```
 
-Dependency direction: `main` → `formats` → `models`. Odin forbids cyclic
+Dependency direction: `main` → `validation` → `formats` → `models`. Odin forbids cyclic
 package imports, so `models` must not import `formats`.
 
 ## Area File Format
@@ -261,22 +269,54 @@ full flag tables from `tables.c` are mirrored.
 
 ## Validation
 
-Validators run on a *set* of areas, not a single file, because exits and
-resets often cross area boundaries (e.g. a room in one area exits to vnum 3001
-in Midgaard). Load all files in `area.lst` for full checks; when only one file
-is loaded, report out-of-area targets as "unresolved", not "broken".
+Package `validation/` (`validate(areas, is_complete, allocator)`) checks a
+*set* of areas, because exits and resets cross area boundaries. It returns
+`[]Diagnostic` sorted by area, line and check. Every rule follows what the
+game does; the code each is based on is noted below.
 
-Checks to implement:
+**Completeness rule**: a reference to a vnum that isn't loaded is an Error
+when the whole `area.lst` is loaded (`is_complete`) or the vnum is inside a
+loaded area's range; otherwise it is Info ("may be in an area that isn't
+loaded"). This lets a single area be checked without false alarms.
 
-- **Broken exits**: target vnum doesn't exist in the loaded set.
-- **One-way exits**: A→B with no exit from B back to A (report as warning,
-  since some are intentional).
-- **Unreachable rooms**: no inbound exits from any other room.
-- **Out-of-range vnums**: vnum outside the area's min/max.
-- **Duplicate vnums**: within a namespace, across all loaded areas.
-- **Bad resets**: references to missing mobs, objects, or rooms; `EQUIP`/`PUT`
-  with no preceding mob or object.
-- **Missing keys**: locked exits whose key object doesn't exist.
+| Check | Severity | Rule (game code) |
+|---|---|---|
+| Broken_Exit | Error/Info | Exit to a missing room or negative vnum (`fix_exits`) |
+| Mismatched_Return | Warning | A→B, but B's reverse exit leads elsewhere (disabled check in `fix_exits`) |
+| One_Way_Exit | Info | A→B and B has no exit back to A in any direction |
+| Replaced_Exit | Warning | Second `D` line for a direction; the first is lost (`load_rooms`) |
+| Dead_End_Room | Warning | No way out; the game also sets NO_MOB (`fix_exits`) |
+| Orphan_Room | Warning | No exit or portal leads in |
+| Unreachable_Room | Warning (Info if unopened) | Not reachable from the area's entrances; whole world only |
+| Area_Without_Entrance | Warning (Info if unopened) | No exit or portal from another area leads in; whole world only |
+| Locked_Door_No_Key | Warning | Locked door with key < 0 (can't be unlocked) or 0 (`act_move.c`) |
+| Missing_Key | Error/Info | Door's key object doesn't exist |
+| Key_Never_Placed | Warning | Locked door's key exists but no reset places it |
+| Door_Reset_No_Exit | Warning | `DOOR` reset where the room has no exit (`reset_room` ignores it) |
+| Reset_Missing_Mob/Object/Room | Error/Info | Reset references a missing vnum (`reset_room` skips it) |
+| Reset_Without_Mob | Warning | `EQUIP`/`GIVE`/`FOLLOW` with no earlier `MOB` in its room (skipped) |
+| Reset_After_Object | Warning | `EQUIP`/`GIVE` after an `OBJ` into a *different* room than the last `MOB`, so it reaches another mob |
+| Put_Into_Non_Container | Warning | `PUT` into an object whose item type isn't container |
+| Portal_Missing_Target | Error/Info | Placed portal's destination (`value[3]`) is missing; -1 is random (`act_ente.c`) |
+| Program_Missing_Target | Error/Info | `#IMPROGS`/`#SPECS` vnum doesn't exist |
+| Ignored_Program_Line | Info | `S` line in `#IMPROGS` (`load_improgs` skips it) |
+| Duplicate_Vnum | Error | Same vnum defined twice in a namespace (the game won't boot) |
+| Vnum_Out_Of_Range | Warning | Record vnum outside its area's range |
+| Bad_Area_Header | Warning | Backwards vnum or level range |
+
+Calibration notes from the real data:
+
+- Exits to vnum 0 are **look-only**: Riftshadow's area editor writes all six
+  directions, and vnum 0 gives a direction a description without a way
+  through (~9,700 of them). They are never reported and don't count as a way
+  back.
+- Most areas with no entrance are `unopened` on purpose, hence Info there.
+- Rooms reached only by programs, recall or staff commands (e.g. midgaard's
+  pet shop storage, 3032) are reported as orphans; that's accurate, if
+  intended.
+
+The room graph's edges are exits to existing rooms plus portals placed by
+`OBJ` resets. Self-loops are ignored.
 
 ## Visualization (Skald)
 
@@ -299,13 +339,14 @@ Checks to implement:
 ./build.sh          # Debug build to build/mudclarity
 ./build.sh run      # Build and run
 ./build.sh test     # Vet and run tests (see Testing)
-./build/mudclarity file.are ...   # Until the GUI exists: parse and summarize files
+./build/mudclarity path/to/area.lst   # Until the GUI exists: validate the whole world
+./build/mudclarity file.are ...       # ...or just these files
 
 # Manual
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
 # Type-check only. Vet only our packages: vendor/skald does not pass -vet.
-odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation
 ```
 
 ### Dependencies
@@ -321,21 +362,25 @@ Build output goes to `build/` (gitignored).
 ## Testing
 
 ```bash
-./build.sh test                     # vet main/formats/models, then run all tests
+./build.sh test                     # vet our packages, then test formats and validation
 RIFTSHADOW_AREA_DIR=/Users/paulmcdowell/Documents/source/paul/riftshadow/area \
-    ./build.sh test                 # also parse every area in area.lst
+    ./build.sh test                 # also parse and validate every area in area.lst
 
 # Run selected tests
 odin test formats -define:ODIN_TEST_NAMES=formats.test_room_basic_fields
+odin test validation -define:ODIN_TEST_NAMES=validation.test_one_way_exit
 ```
 
-Tests live next to the code as `formats/*_test.odin` (package `formats`, so
-private procedures are testable). The test runner tracks memory, so leaks fail
-a test. Every change to the parser needs tests:
+Tests live next to the code as `<package>/*_test.odin`, so private
+procedures are testable. The test runner tracks memory, so leaks fail a test.
+Every change needs tests.
+
+**Parser (`formats/`)**
 
 - **Unit tests** (`reader_test`, `area_parser_test`, `mobile_parser_test`,
-  `object_parser_test`, `area_list_test`, `loading_test`): small inline
-  inputs built with `with_header(...)`; error tests check the kind *and* line.
+  `object_parser_test`, `area_list_test`, `area_set_test`, `loading_test`):
+  small inline inputs built with `with_header(...)`; error tests check the
+  kind *and* line.
 - **Golden tests** (`golden_test`): real files in `test_data/valid/` embedded
   with `#load`. Expected counts were checked with `awk`/`grep`, not the parser.
 - **Fuzz tests** (`fuzz_test`): every truncation and seeded random mutations
@@ -343,11 +388,24 @@ a test. Every change to the parser needs tests:
 - **Corpus test** (`corpus_test`): with `RIFTSHADOW_AREA_DIR` set, all of
   `area.lst` must parse within the performance budget.
 
-When the corpus test fails on real data, fix the parser by reading the
-Riftshadow loader, then add a unit test for that case.
+**Validators (`validation/`)**
+
+- **Per-check tests** (`exits_test`, `resets_test`, `reachability_test`):
+  worlds built from helpers (`test_area`, `room`, `exit`, `mob`, `object`,
+  `resets`). Each check has a case that triggers it and a near miss that must
+  not; use `expect_one`/`expect_none`/`expect_clean`.
+- **Golden tests** (`golden_test`): `clean_world.are` must produce nothing;
+  midgaard's findings were each verified by hand against the file.
+- **Robustness**: validation is deterministic and survives mutated areas.
+- **Corpus test**: validates the whole world (< 500 ms) and logs counts.
+
+When real data disagrees with a check, read the game code before changing
+the rule, then add a test for the case (e.g. look-only exits, same-room
+`OBJ` before `GIVE`).
 
 `test_data/invalid/` holds files the parser must reject (e.g. the legacy ROM
-`school.are`). `test_data/` files are Riftshadow areas (MIT licensed).
+`school.are`). `test_data/` files are Riftshadow areas (MIT licensed), except
+the hand-written `clean_world.are`.
 
 ## Security & Robustness
 
@@ -370,6 +428,7 @@ and reject entries containing path separators or `..`.
 ### Review Checklist
 
 - [ ] `./build.sh test` passes (vets our packages; tests use `-vet -strict-style`)
+- [ ] New or changed checks are calibrated against the corpus
 - [ ] Follows naming and style conventions
 - [ ] No ignored error returns
 - [ ] Bounds checks on input-derived indexing
