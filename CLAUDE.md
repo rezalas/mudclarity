@@ -449,6 +449,7 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 ./build.sh          # Debug build to build/mudclarity
 ./build.sh run      # Build and run
 ./build.sh test     # Vet and run tests (see Testing)
+./build.sh debug-tests [name]         # Test binaries for a debugger
 ./build/mudclarity path/to/area.lst   # Until the GUI exists: validate the whole world
 ./build/mudclarity file.are ...       # ...or just these files
 ./build/mudclarity                    # Usage, including the review commands below
@@ -483,9 +484,9 @@ Build output goes to `build/` (gitignored).
 RIFTSHADOW_AREA_DIR=../riftshadow/area \
     ./build.sh test                 # also parse and validate every area in area.lst
 
-# Run selected tests
-odin test formats -define:ODIN_TEST_NAMES=formats.test_room_basic_fields
-odin test validation -define:ODIN_TEST_NAMES=validation.test_one_way_exit
+# Run one test (<package>.<test>)
+./build.sh test formats.test_room_basic_fields
+./build.sh test validation.test_one_way_exit
 ```
 
 Tests live next to the code as `<package>/*_test.odin`, so private
