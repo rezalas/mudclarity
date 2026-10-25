@@ -595,6 +595,18 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Adding a command means adding it to `COMMANDS`; the usage and
   missing-argument messages come from the table.
 
+**GUI (`app/`, `components/`)**
+
+- `step` is tested message by message; effects are checked as values.
+  `load_now` runs the real `load_world` worker synchronously on a world from
+  `testkit`. State is freed with `finish(s)` (a quit), so the tracking
+  allocator catches leaked strings. Workspaces live on the plain heap by
+  design, so a leaked workspace is *not* caught by the test runner.
+- `display_text` is tested on Latin-1, control and C1 bytes, newlines,
+  length limits, and every byte value producing valid UTF-8.
+- Check the window itself by running it (see VS Code, or `xdotool` plus
+  `import -window <id>` to screenshot only the app's own window).
+
 **Layout (`layout/`)**
 
 - Areas are built in memory with `room(vnum, {.East, 101}, ...)` and
