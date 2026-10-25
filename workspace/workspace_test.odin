@@ -111,3 +111,29 @@ test_open_area_files :: proc(t: ^testing.T) {
 test_close_nil :: proc(t: ^testing.T) {
 	close(nil)
 }
+
+@(test)
+test_area_list_and_file_names :: proc(t: ^testing.T) {
+	testing.expect(t, is_area_list("area.lst"))
+	testing.expect(t, is_area_list("C:\\Riftshadow\\AREA.LST"))
+	testing.expect(t, is_area_list("/w/Area.Lst"))
+	testing.expect(t, !is_area_list("area.lst.bak"))
+	testing.expect(t, !is_area_list("midgaard.are"))
+	testing.expect(t, is_area_file("MIDGAARD.ARE"))
+	testing.expect(t, !is_area_file("area.lst"))
+}
+
+@(test)
+test_open_picks_list_or_files :: proc(t: ^testing.T) {
+	dir := testkit.temp_dir(t, "mudclarity_ws_open_dispatch")
+	defer os.remove_all(dir)
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS))
+	area, _ := filepath.join({dir, "a.are"}, context.temp_allocator)
+
+	ws, err := open({list})
+	testing.expect(t, err == nil && ws.clarity_path != "", "one area.lst opens as a world")
+	close(ws)
+	ws, err = open({area})
+	testing.expect(t, err == nil && ws.clarity_path == "", "an area file opens loose")
+	close(ws)
+}
