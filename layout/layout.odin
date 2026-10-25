@@ -36,6 +36,8 @@ Placed_Room :: struct {
 	cell:         Cell,
 	component:    int,  // Index into `layout.components`
 	is_displaced: bool, // Its cell was taken, so it (and its island) moved
+	leads_up:     bool, // An exit or edge connects it to a higher level (or up out of the area)
+	leads_down:   bool, // ...or to a lower one
 }
 
 Edge_Kind :: enum u8 {

@@ -73,21 +73,21 @@ test_loaded_world_opens :: proc(t: ^testing.T) {
 	s, _ = step(s, load_now(1, list))
 	defer finish(s)
 	testing.expect_value(t, s.screen, Screen.World)
-	testing.expect(t, s.ws != nil)
+	testing.expect(t, s.world != nil)
 	testing.expect(t, !is_loading(s))
-	testing.expect_value(t, s.summary.rooms, 3)
-	testing.expect_value(t, s.summary.severities[.Error], 1)
-	testing.expect_value(t, s.summary.state_counts[.Open], len(s.ws.diagnostics))
+	testing.expect_value(t, s.world.summary.rooms, 3)
+	testing.expect_value(t, s.world.summary.severities[.Error], 1)
+	testing.expect_value(t, s.world.summary.state_counts[.Open], len(s.world.ws.diagnostics))
 
 	// Opening another world replaces (and frees) the first.
-	first := s.ws
+	first := s.world
 	s.generation = 2
 	s, _ = step(s, load_now(2, list))
-	testing.expect(t, s.ws != nil && s.ws != first)
+	testing.expect(t, s.world != nil && s.world != first)
 
 	s, _ = step(s, Close_World{})
 	testing.expect_value(t, s.screen, Screen.Welcome)
-	testing.expect(t, s.ws == nil)
+	testing.expect(t, s.world == nil)
 }
 
 @(test)
@@ -97,9 +97,9 @@ test_stale_load_is_dropped :: proc(t: ^testing.T) {
 	s := init()
 	s.generation = 2 // A newer load has started since generation 1
 
-	s, _ = step(s, load_now(1, list)) // Its workspace must be freed
+	s, _ = step(s, load_now(1, list)) // Its world must be freed
 	defer finish(s)
-	testing.expect(t, s.ws == nil)
+	testing.expect(t, s.world == nil)
 	testing.expect_value(t, s.screen, Screen.Welcome)
 }
 
@@ -112,7 +112,7 @@ test_failed_load_shows_error :: proc(t: ^testing.T) {
 	s.generation = 1
 
 	loaded := load_now(1, list)
-	testing.expect(t, loaded.ws == nil)
+	testing.expect(t, loaded.world == nil)
 	s, _ = step(s, loaded)
 	defer finish(s)
 	testing.expect_value(t, s.screen, Screen.Welcome)
@@ -132,7 +132,7 @@ test_quit_frees_everything :: proc(t: ^testing.T) {
 	s, effect = step(s, Quit_Requested{})
 	_, is_quit := effect.(Quit)
 	testing.expect(t, is_quit)
-	testing.expect(t, s.ws == nil)
+	testing.expect(t, s.world == nil)
 	testing.expect_value(t, s.error, "")
 }
 
@@ -141,4 +141,17 @@ test_theme_change_follows_system :: proc(t: ^testing.T) {
 	_, effect := step(init(), Theme_Changed{})
 	_, ok := effect.(Follow_System_Theme)
 	testing.expect(t, ok)
+}
+
+@(test)
+test_loaded_world_asks_for_another_frame :: proc(t: ^testing.T) {
+	dir, list := world_on_disk(t, "mudclarity_app_redraw")
+	defer os.remove_all(dir)
+	s := init()
+	s.generation = 1
+	effect: Effect
+	s, effect = step(s, load_now(1, list))
+	defer finish(s)
+	_, ok := effect.(Redraw_Soon)
+	testing.expect(t, ok, "the graph needs a frame with a known size to fit itself")
 }

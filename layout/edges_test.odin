@@ -72,3 +72,17 @@ test_skipped_and_external_exits :: proc(t: ^testing.T) {
 	testing.expect_value(t, l.externals[0], External_Exit{from = 0, direction = .South, target = 5000})
 	testing.expect_value(t, l.externals[1], External_Exit{from = 0, direction = .West, target = -1})
 }
+
+@(test)
+test_rooms_know_their_level_links :: proc(t: ^testing.T) {
+	area := area_of(
+		room(100, {.Up, 101}, {.Down, 5000}), // Up in the area, down out of it
+		room(101, {.Down, 100}),
+		room(102, {.East, 100}),
+	)
+	l := compute(&area)
+	defer destroy(&l)
+	testing.expect(t, l.rooms[0].leads_up && l.rooms[0].leads_down)
+	testing.expect(t, l.rooms[1].leads_down && !l.rooms[1].leads_up)
+	testing.expect(t, !l.rooms[2].leads_up && !l.rooms[2].leads_down)
+}

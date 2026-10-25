@@ -70,6 +70,24 @@ CHECK_SEVERITY := [Check]Severity {
 	.Bad_Area_Header        = .Warning,
 }
 
+// Checks whose `vnum` is always a room, so a finding can be shown on that
+// room. Duplicate_Vnum and Vnum_Out_Of_Range are about any kind of record,
+// and reset and program checks name mobs, objects or the reset's room
+// depending on the check, so they are left out.
+ROOM_CHECKS :: bit_set[Check]{
+	.Broken_Exit,
+	.Mismatched_Return,
+	.One_Way_Exit,
+	.Replaced_Exit,
+	.Dead_End_Room,
+	.Orphan_Room,
+	.Unreachable_Room,
+	.Locked_Door_No_Key,
+	.Missing_Key,
+	.Key_Never_Placed,
+	.Door_Reset_No_Exit,
+}
+
 // One finding. `area` indexes the slice passed to validate. `vnum` is the
 // record the finding is about (0 for area-level findings) and
 // `related_vnum` the other record involved, such as an exit's target.
