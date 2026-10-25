@@ -71,6 +71,7 @@ mudclarity/
 │   ├── reset.odin           # Reset commands
 │   ├── program.odin         # #IMPROGS / #SPECS bindings
 │   └── types.odin           # Shared types (Direction, Dice, ...)
+├── testkit/                 # package testkit: helpers imported only by *_test.odin
 ├── test_data/               # Real and hand-made .are files for tests
 ├── vendor/skald/            # Skald GUI library (git submodule)
 ├── .vscode/                 # Tasks, launch (debug) configs, recommended extensions
@@ -539,6 +540,18 @@ Every change needs tests.
 - Merge states, snapshot new/fixed, added/removed/changed files, and edits
   use small worlds from `world_make(...)`.
 - Corpus test saves and reloads a review of the whole world in a temp dir.
+
+Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
+`write_world`, ...) live in `testkit/`; a suite's own helpers stay in its
+`helpers_test.odin`.
+
+**CLI (`cli/`)**
+
+- `run_cli(args...)` runs a command line with output captured in string
+  builders; tests check exit codes and exact messages, and read the saved
+  `area.clarity` back. A refused edit must not write the file.
+- Adding a command means adding it to `COMMANDS`; the usage and
+  missing-argument messages come from the table.
 
 **Workspace (`workspace/`)**
 

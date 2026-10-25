@@ -23,7 +23,8 @@ area_text :: proc(name, room_records: string) -> string {
 }
 
 // Room 100 <-> 101, a broken exit 100 -> 150, and an isolated room 102.
-// Findings: Broken_Exit (100, 150), Orphan_Room (102), Dead_End_Room (102).
+// Findings: Broken_Exit (100, 150), Orphan_Room (102), Dead_End_Room (102),
+// and, when loaded as a whole area.lst, Area_Without_Entrance.
 BASE_ROOMS :: "#100\nA~\n~\ncity\nD NORTH 101 0 0\n~\n~\nD EAST 150 0 0\n~\n~\nS\n#101\nB~\n~\ncity\nD SOUTH 100 0 0\n~\n~\nS\n#102\nC~\n~\ncity\nS\n"
 
 // The id of BASE_ROOMS' broken exit when it is the first area ("a.are").
