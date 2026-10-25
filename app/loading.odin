@@ -7,8 +7,6 @@ package app
 
 import "base:runtime"
 
-import "../validation"
-import "../workspace"
 
 /*
  Loading a world on a worker thread (cmd_thread). The worker never touches
@@ -21,27 +19,12 @@ import "../workspace"
  errors are returned as text.
 */
 
-// Open the world named by `request`, validate it and count its findings.
+// Open the world named by `request`: load, validate and lay it out.
 load_world :: proc(request: Load_Request) -> Msg {
 	context.allocator = runtime.heap_allocator()
 	defer free_paths(request.paths)
-
-	ws, err := workspace.open(request.paths)
-	if err != nil {
-		return World_Loaded{generation = request.generation, error = workspace.error_message(err)}
-	}
-	return World_Loaded{generation = request.generation, ws = ws, summary = summarize(ws)}
-}
-
-// Counts for the world's summary.
-summarize :: proc(ws: ^workspace.Workspace) -> Summary {
-	s: Summary
-	for area in ws.areas {
-		s.rooms += len(area.rooms)
-	}
-	s.severities = validation.count_by_severity(ws.diagnostics)
-	s.state_counts = workspace.merge(ws, context.temp_allocator).state_counts
-	return s
+	world, error := world_open(request.paths)
+	return World_Loaded{generation = request.generation, world = world, error = error}
 }
 
 @(private = "file")

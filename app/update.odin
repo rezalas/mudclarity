@@ -10,6 +10,7 @@ import "core:strings"
 
 import "gui:skald"
 
+import "../components"
 import "../workspace"
 
 // The update Skald calls: step, then turn the effect into a Command.
@@ -19,8 +20,8 @@ update :: proc(s: State, m: Msg) -> (State, skald.Command(Msg)) {
 }
 
 // Advance the state. The only side effects here are freeing memory the
-// state stops using (strings, a replaced or stale workspace); everything
-// else is returned as an Effect.
+// state stops using (strings, a replaced or stale world); everything else
+// is returned as an Effect.
 step :: proc(s: State, m: Msg) -> (State, Effect) {
 	out := s
 	switch v in m {
@@ -48,7 +49,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 	case World_Loaded:
 		defer delete(v.error, runtime.heap_allocator())
 		if v.generation != out.generation {
-			close_workspace(v.ws) // Superseded by a newer load
+			world_close(v.world) // Superseded by a newer load
 			return out, nil
 		}
 		set_text(&out.loading_path, "")
@@ -56,26 +57,49 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 			set_text(&out.error, v.error)
 			return out, nil
 		}
-		close_workspace(out.ws)
-		out.ws = v.ws
-		out.summary = v.summary
+		world_close(out.world)
+		out.world = v.world
 		out.screen = .World
+		show_area(&out, first_area_with_rooms(out.world))
+		return out, Redraw_Soon{}
 
 	case Close_World:
-		close_workspace(out.ws)
-		out.ws = nil
-		out.summary = {}
+		world_close(out.world)
+		out.world = nil
 		out.screen = .Welcome
+		show_area(&out, 0)
+
+	case Area_Picked:
+		if out.world == nil {
+			return out, nil
+		}
+		for label, i in out.world.labels {
+			if label == v.label && i != out.area {
+				show_area(&out, i)
+			}
+		}
+
+	case Graph:
+		if out.world == nil {
+			return out, nil
+		}
+		if click, is_click := v.msg.(components.Room_Clicked); is_click {
+			out.selected_room = click.room
+			return out, nil
+		}
+		out.graph = components.room_graph_update(out.graph, v.msg, &out.world.layouts[out.area])
 
 	case Dismiss_Error:
 		set_text(&out.error, "")
+
+	case Redraw:
 
 	case Theme_Changed:
 		return out, Follow_System_Theme{}
 
 	case Quit_Requested:
-		close_workspace(out.ws)
-		out.ws = nil
+		world_close(out.world)
+		out.world = nil
 		set_text(&out.error, "")
 		set_text(&out.loading_path, "")
 		return out, Quit{}

@@ -27,10 +27,11 @@ mudclarity/
 ├── .gitattributes           # Line endings pinned per file type; area files untouched
 ├── app/                     # package app: the GUI (Elm root, screens, loading)
 │   ├── app.odin             # run(paths): Skald wiring; debug leak report
-│   ├── state.odin           # State, Summary, init; string and workspace ownership
+│   ├── state.odin           # State, init, show_area; string ownership
 │   ├── msg.odin             # Msg union and Effect union
 │   ├── update.odin          # step (pure: State, Msg -> State, Effect) and update
 │   ├── effects.odin         # Effect -> skald.Command; dialog and drop handlers
+│   ├── world.odin           # World: workspace + per-area layouts, room marks, labels
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
 │   ├── welcome_view.odin    # Screens, one file each
@@ -39,6 +40,9 @@ mudclarity/
 ├── components/              # package components: reusable GUI pieces
 │   ├── common.odin          # heading, caption, stat, banner (generic over $Msg)
 │   ├── text.odin            # display_text: Latin-1 file text -> safe UTF-8
+│   ├── graph_camera.odin    # Cells <-> graph <-> screen; zoom at cursor; fit
+│   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
+│   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
 │   └── *_test.odin
 ├── layout/                  # package layout: room grid placement, no GUI code
 │   ├── layout.odin          # Layout, Cell, Edge; compute / destroy / room_at
@@ -488,7 +492,28 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   control characters through one display helper before drawing any file
   text.
 - The room graph draws only what is on screen and hit-tests through a
-  spatial index, to keep 1000+ rooms smooth.
+  spatial index, to keep 1000+ rooms smooth. Painting is one pass over the
+  area's rooms and edges with nothing precomputed per frame: anything that
+  needs more than that (which rooms lead up/down, each room's worst
+  finding) is computed once, in `layout` or `World`.
+
+### Room graph
+
+- One area and one level at a time. Rooms are boxes outlined by their
+  worst finding that isn't accepted (red error, amber warning, muted info;
+  only `validation.ROOM_CHECKS` count), thicker in the accent colour when
+  selected; a dot marks a displaced room. Exits: straight corridors, bent
+  curves (translucent amber), arrowheads on one-way exits, up/down
+  triangles on rooms with exits to other levels, and stubs for exits that
+  leave the area.
+- Drag empty space to pan, scroll to zoom at the cursor, click a room to
+  select it (reported to `app` as `Room_Clicked`); Up/Down change level and
+  Fit refits. Labels appear only when zoomed in enough to read.
+- A newly shown area fits itself once the canvas has a size. Skald redraws
+  only on events, so a load returns `Redraw_Soon` to get that frame.
+- Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
+  no `Ctx`); `draw_text` takes the *baseline*, and its `size` is the cap
+  height.
 
 ## Build & Development
 
@@ -638,6 +663,9 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   `testkit`. State is freed with `finish(s)` (a quit), so the tracking
   allocator catches leaked strings. Workspaces live on the plain heap by
   design, so a leaked workspace is *not* caught by the test runner.
+- `room_graph_update`, `room_at_point`, `level_bounds` and the camera maths
+  (`graph_camera_test`) are tested without drawing; `World`'s layouts and
+  room marks (including accepted findings not marking) in `world_test`.
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
   length limits, and every byte value producing valid UTF-8.
 - Check the window itself by running it (see VS Code, or `xdotool` plus
