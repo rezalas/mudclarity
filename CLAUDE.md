@@ -26,7 +26,13 @@ mudclarity/
 ├── app/                     # (planned) package app: GUI root state, Msg routing, screens
 ├── components/              # (planned) package components: reusable GUI components
 ├── layout/                  # (planned) package layout: room grid placement, no GUI code
-├── cli/                     # (planned) package cli: command-line commands
+├── cli/                     # package cli: command-line commands
+│   ├── cli.odin             # run(args, output) -> exit code; Output; shared helpers
+│   ├── commands.odin        # COMMANDS table (also builds the usage text)
+│   ├── check.odin           # check and its summary
+│   ├── review.odin          # save, accept, flag, reopen
+│   ├── records.odin         # note, issue
+│   └── *_test.odin
 ├── workspace/               # package workspace: a loaded world, its findings and review file
 │   ├── workspace.odin       # open_area_list / open_area_files / close
 │   ├── review.odin          # Merge, finding lookup, review edits, save
@@ -460,7 +466,7 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
 # Type-check only. Vet only our packages: vendor/skald does not pass -vet.
-odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace,cli
 ```
 
 ### Dependencies
