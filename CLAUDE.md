@@ -23,8 +23,21 @@ the ROM format; see **Area File Format** below.
 mudclarity/
 ├── mudclarity.odin          # Entry point (package main): GUI with no arguments, else the CLI
 ├── build.sh                 # Build script
-├── app/                     # (planned) package app: GUI root state, Msg routing, screens
-├── components/              # (planned) package components: reusable GUI components
+├── app/                     # package app: the GUI (Elm root, screens, loading)
+│   ├── app.odin             # run(paths): Skald wiring; debug leak report
+│   ├── state.odin           # State, Summary, init; string and workspace ownership
+│   ├── msg.odin             # Msg union and Effect union
+│   ├── update.odin          # step (pure: State, Msg -> State, Effect) and update
+│   ├── effects.odin         # Effect -> skald.Command; dialog and drop handlers
+│   ├── loading.odin         # load_world worker (cmd_thread)
+│   ├── view.odin            # Root view; startup paths
+│   ├── welcome_view.odin    # Screens, one file each
+│   ├── world_view.odin
+│   └── *_test.odin
+├── components/              # package components: reusable GUI pieces
+│   ├── common.odin          # heading, caption, stat, banner (generic over $Msg)
+│   ├── text.odin            # display_text: Latin-1 file text -> safe UTF-8
+│   └── *_test.odin
 ├── layout/                  # package layout: room grid placement, no GUI code
 │   ├── layout.odin          # Layout, Cell, Edge; compute / destroy / room_at
 │   ├── place.odin           # Walk exits per component; links; vnum index
@@ -422,7 +435,7 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   cascading; exits that don't line up are `Bent` edges; disconnected
   components are packed apart. On the corpus (~10k rooms, ~15 ms) about 1%
   of rooms are displaced. Exits to vnum 0 are look-only and never edges.
-- **Screens**: Welcome (open an `area.lst`, recent files, drop a file) and
+- **Screens**: Welcome (open an `area.lst` or drop files; recent files are planned) and
   World: toolbar (area picker, search, zoom, filters) over room inspector
   (left), room graph (center) and findings log (right). Review actions
   (accept, flag, reopen, note, issue) are dialogs.
@@ -451,9 +464,21 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 ### GUI safety
 
 - Loading and validation run in `cmd_thread` workers. Each load carries a
-  generation number so results from a superseded load are dropped. Workers
-  never assert or panic (that kills the process); errors come back as `Msg`
-  variants with heap-allocated text.
+  generation number so results from a superseded load are dropped (and
+  their workspace freed). Workers never assert or panic (that kills the
+  process); errors come back as `Msg` variants with heap-allocated text.
+- **Memory that crosses threads uses `runtime.heap_allocator()`**: request
+  paths, workspaces, error text, and the `cmd_thread` command itself (Skald
+  allocates its job there and frees it on the worker). The GUI thread's
+  allocator is a tracking allocator in debug builds, so mixing the two is
+  reported as leaks and bad frees. `close_workspace` closes under the heap.
+- `update` calls `step`, which returns an `Effect` instead of a
+  `skald.Command`; `command_for` turns it into one. Tests check effects
+  without Skald allocating commands.
+- Skald has no startup command, so the first `view` sends `Open_Paths` for
+  `mudclarity open <path>`; opening bumps the generation, so it is sent once.
+- Closing the window sends `Quit_Requested` (`on_close_request`), which
+  frees the workspace before `cmd_quit`.
 - A loaded `workspace` owns all its memory and is freed at once on unload.
   `Msg` strings live in the frame arena: clone them before keeping them.
   Debug builds use the tracking allocator.
@@ -470,16 +495,22 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 ./build.sh run      # Build and run
 ./build.sh test     # Vet and run tests (see Testing)
 ./build.sh debug-tests [name]         # Test binaries for a debugger (see VS Code)
-./build/mudclarity path/to/area.lst   # Until the GUI exists: validate the whole world
+./build/mudclarity                    # Open the GUI
+./build/mudclarity open path/to/area.lst   # Open the GUI on a world
+./build/mudclarity path/to/area.lst   # CLI: validate the whole world
 ./build/mudclarity file.are ...       # ...or just these files
-./build/mudclarity                    # Usage, including the review commands below
+./build/mudclarity help               # Usage, including the review commands below
 
 # Manual
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
 # Type-check only. Vet only our packages: vendor/skald does not pass -vet.
-odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace,cli
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace,cli,layout,components,app
 ```
+
+`-strict-style` applies to every package compiled, Skald included, so tests
+of packages that import Skald (`app`, `components`) use `-vet-style` with
+`-vet-packages` instead (see `style_flags` in `build.sh`).
 
 ### Dependencies
 
@@ -508,9 +539,9 @@ Every task calls `build.sh`, so flags are only ever changed there.
   `test (one)`, which prompts for `<package>.<test>`. Compiler, vet and
   test failures show up in the Problems panel.
 - **Run and Debug** configurations (F5 to debug, Ctrl+F5 to run without the
-  debugger): `mudclarity: check the world`, `mudclarity: custom arguments`
-  (prompts for a command line), `tests: debug a package` and
-  `tests: debug one test`.
+  debugger): `mudclarity: GUI` (the default), `mudclarity: GUI on the world`,
+  `mudclarity: check the world`, `mudclarity: custom arguments` (prompts for
+  a command line), `tests: debug a package` and `tests: debug one test`.
 - Test binaries for debugging come from `./build.sh debug-tests`. They run
   tests on one thread so breakpoints hit in order. `ODIN_TEST_NAMES` is a
   compile-time setting, so debugging one test rebuilds it on its own.
