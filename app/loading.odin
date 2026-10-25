@@ -6,7 +6,6 @@
 package app
 
 import "base:runtime"
-import "core:strings"
 
 import "../validation"
 import "../workspace"
@@ -27,13 +26,7 @@ load_world :: proc(request: Load_Request) -> Msg {
 	context.allocator = runtime.heap_allocator()
 	defer free_paths(request.paths)
 
-	ws: ^workspace.Workspace
-	err: workspace.Error
-	if len(request.paths) == 1 && strings.has_suffix(strings.to_lower(request.paths[0], context.temp_allocator), ".lst") {
-		ws, err = workspace.open_area_list(request.paths[0])
-	} else {
-		ws, err = workspace.open_area_files(request.paths)
-	}
+	ws, err := workspace.open(request.paths)
 	if err != nil {
 		return World_Loaded{generation = request.generation, error = workspace.error_message(err)}
 	}
