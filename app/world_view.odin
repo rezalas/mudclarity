@@ -59,7 +59,7 @@ header :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	location := filepath.dir(ws.list_path) if ws.list_path != "" else ""
 	picker := skald.spacer(0)
 	if len(ws.areas) > 0 {
-		picker = skald.select(ctx, s.world.labels[s.area], s.world.labels, area_picked, width = 360)
+		picker = skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, width = 360)
 	}
 	return skald.row(
 		components.heading(ctx, title, is_large = true),

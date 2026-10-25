@@ -24,7 +24,7 @@ test_world_has_a_layout_and_marks_per_area :: proc(t: ^testing.T) {
 	if !testing.expectf(t, error == "", "%s", error) do return
 	testing.expect_value(t, len(world.layouts), 2)
 	testing.expect_value(t, len(world.layouts[0].rooms), 3)
-	testing.expect_value(t, world.labels[0], "a.are · A")
+	testing.expect_value(t, world.labels[0], "A (a.are)")
 	testing.expect_value(t, first_area_with_rooms(world), 0)
 
 	// BASE_ROOMS: 100 has the broken exit (an error); 102 is an orphan and a
