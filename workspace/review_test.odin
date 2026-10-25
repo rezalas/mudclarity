@@ -10,16 +10,17 @@ import "core:strings"
 import "core:testing"
 
 import "../clarity"
+import "../testkit"
 
 @(test)
 test_current_finding_key :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_finding_key")
+	dir := testkit.temp_dir(t, "mudclarity_ws_finding_key")
 	defer os.remove_all(dir)
-	ws := open_or_fail(t, write_world(t, dir, area_text("A", BASE_ROOMS)))
+	ws := open_or_fail(t, testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS)))
 	defer close(ws)
 	if ws == nil do return
 
-	key, err := current_finding_key(ws, BROKEN_EXIT_ID)
+	key, err := current_finding_key(ws, testkit.BROKEN_EXIT_ID)
 	testing.expect(t, err == nil)
 	testing.expect_value(t, key, clarity.Finding_Key{"a.are", "Broken_Exit", 100, 150})
 
@@ -32,15 +33,15 @@ test_current_finding_key :: proc(t: ^testing.T) {
 
 @(test)
 test_review_save_and_reopen :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_review")
+	dir := testkit.temp_dir(t, "mudclarity_ws_review")
 	defer os.remove_all(dir)
-	list := write_world(t, dir, area_text("A", BASE_ROOMS))
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS))
 
 	{
 		ws := open_or_fail(t, list)
 		defer close(ws)
 		if ws == nil do return
-		key, _ := current_finding_key(ws, BROKEN_EXIT_ID)
+		key, _ := current_finding_key(ws, testkit.BROKEN_EXIT_ID)
 		testing.expect(t, set_review(ws, key, clarity.REVIEW_ACCEPTED, "on purpose", TEST_DATE) == nil)
 		testing.expect(t, record_run(ws) == nil)
 		testing.expect(t, save(ws) == nil)
@@ -58,18 +59,18 @@ test_review_save_and_reopen :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.state_counts[.Accepted], 1)
 	testing.expect_value(t, result.new_count, 0)
 
-	key, _ := current_finding_key(ws, BROKEN_EXIT_ID)
-	testing.expect(t, remove_review(ws, key, BROKEN_EXIT_ID) == nil)
-	err := remove_review(ws, key, BROKEN_EXIT_ID)
+	key, _ := current_finding_key(ws, testkit.BROKEN_EXIT_ID)
+	testing.expect(t, remove_review(ws, key, testkit.BROKEN_EXIT_ID) == nil)
+	err := remove_review(ws, key, testkit.BROKEN_EXIT_ID)
 	testing.expect_value(t, edit_kind(t, err), Edit_Error_Kind.No_Decision)
-	testing.expect_value(t, error_message(err, context.temp_allocator), "no decision recorded for " + BROKEN_EXIT_ID)
+	testing.expect_value(t, error_message(err, context.temp_allocator), "no decision recorded for " + testkit.BROKEN_EXIT_ID)
 }
 
 @(test)
 test_notes_and_issues :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_notes")
+	dir := testkit.temp_dir(t, "mudclarity_ws_notes")
 	defer os.remove_all(dir)
-	list := write_world(t, dir, area_text("A", BASE_ROOMS))
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS))
 	ws := open_or_fail(t, list)
 	defer close(ws)
 	if ws == nil do return
@@ -96,9 +97,9 @@ test_notes_and_issues :: proc(t: ^testing.T) {
 
 @(test)
 test_save_failure_names_review_file :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_save_failure")
+	dir := testkit.temp_dir(t, "mudclarity_ws_save_failure")
 	defer os.remove_all(dir)
-	ws := open_or_fail(t, write_world(t, dir, area_text("A", BASE_ROOMS)))
+	ws := open_or_fail(t, testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS)))
 	defer close(ws)
 	if ws == nil do return
 	// A directory where the file should be makes the rename fail.

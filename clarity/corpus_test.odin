@@ -13,6 +13,7 @@ import "core:testing"
 
 import "../formats"
 import "../validation"
+import "../testkit"
 
 /*
  Saves a review file for the whole Riftshadow world and reads it back.
@@ -55,7 +56,7 @@ review_corpus :: proc(t: ^testing.T, dir: string) {
 
 	doc := document_make("area.lst", allocator)
 	refresh(&doc, files, diagnostics, allocator)
-	out_dir := temp_dir(t, "mudclarity_clarity_corpus")
+	out_dir := testkit.temp_dir(t, "mudclarity_clarity_corpus")
 	defer os.remove_all(out_dir)
 	path, _ := filepath.join({out_dir, "area.clarity"}, context.temp_allocator)
 	if !testing.expect(t, save_document(path, &doc) == nil) do return

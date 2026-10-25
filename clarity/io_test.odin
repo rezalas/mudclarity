@@ -11,6 +11,8 @@ import "core:path/filepath"
 import "core:strings"
 import "core:testing"
 
+import "../testkit"
+
 @(private = "file")
 VALID_DOCUMENT :: `{
   "format": "mudclarity",
@@ -108,7 +110,7 @@ test_unknown_check_names_are_kept :: proc(t: ^testing.T) {
      "status"`)
 	doc, err := parse_document(transmute([]u8)text, allocator)
 	if !testing.expectf(t, err == nil, "%v", err) do return
-	dir := temp_dir(t, "mudclarity_clarity_unknown")
+	dir := testkit.temp_dir(t, "mudclarity_clarity_unknown")
 	defer os.remove_all(dir)
 	path, _ := filepath.join({dir, "area.clarity"}, context.temp_allocator)
 	testing.expect(t, save_document(path, &doc) == nil)
@@ -129,7 +131,7 @@ test_round_trip_is_byte_identical :: proc(t: ^testing.T) {
 	add_note(&doc, "a.are", KIND_ROOM, 102, "Second note", TEST_DATE, allocator)
 	add_note(&doc, "a.are", KIND_ROOM, 101, "First by vnum", TEST_DATE, allocator)
 
-	dir := temp_dir(t, "mudclarity_clarity_round_trip")
+	dir := testkit.temp_dir(t, "mudclarity_clarity_round_trip")
 	defer os.remove_all(dir)
 	first_path, _ := filepath.join({dir, "first.clarity"}, context.temp_allocator)
 	second_path, _ := filepath.join({dir, "second.clarity"}, context.temp_allocator)
@@ -153,7 +155,7 @@ test_save_is_atomic :: proc(t: ^testing.T) {
 	defer virtual.arena_destroy(&arena)
 	allocator := virtual.arena_allocator(&arena)
 
-	dir := temp_dir(t, "mudclarity_clarity_atomic")
+	dir := testkit.temp_dir(t, "mudclarity_clarity_atomic")
 	defer os.remove_all(dir)
 	path, _ := filepath.join({dir, "area.clarity"}, context.temp_allocator)
 	doc := document_make("area.lst", allocator)
