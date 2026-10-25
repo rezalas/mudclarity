@@ -5,7 +5,7 @@
  */
 package app
 
-import "../workspace"
+import "../components"
 
 Msg :: union {
 	Open_Requested,
@@ -13,9 +13,12 @@ Msg :: union {
 	Open_Paths,
 	World_Loaded,
 	Close_World,
+	Area_Picked,
+	Graph,
 	Dismiss_Error,
 	Theme_Changed,
 	Quit_Requested,
+	Redraw,
 }
 
 // The Open button: show the file dialog.
@@ -29,16 +32,26 @@ Open_Paths :: struct {
 	paths: []string,
 }
 
-// A loading thread finished. Exactly one of `ws` and `error` is set; both
-// were allocated with runtime.heap_allocator() and now belong to update.
+// A loading thread finished. Exactly one of `world` and `error` is set;
+// both were allocated with runtime.heap_allocator() and now belong to
+// update.
 World_Loaded :: struct {
 	generation: int,
-	ws:         ^workspace.Workspace,
-	summary:    Summary,
+	world:      ^World,
 	error:      string,
 }
 
 Close_World :: struct {}
+
+// An entry of the area picker (one of world.labels; in the frame arena).
+Area_Picked :: struct {
+	label: string,
+}
+
+// A message from the room graph component.
+Graph :: struct {
+	msg: components.Room_Graph_Msg,
+}
 
 Dismiss_Error :: struct {}
 
@@ -47,6 +60,9 @@ Theme_Changed :: struct {}
 
 // The window's close button.
 Quit_Requested :: struct {}
+
+// Nothing to do; it only makes Skald draw another frame (see Redraw_Soon).
+Redraw :: struct {}
 
 /*
  What an update asks the outside world to do. step returns one of these
@@ -58,6 +74,7 @@ Effect :: union {
 	Load_Request,
 	Follow_System_Theme,
 	Quit,
+	Redraw_Soon,
 }
 
 Show_Open_Dialog :: struct {}
@@ -72,3 +89,8 @@ Load_Request :: struct {
 Follow_System_Theme :: struct {}
 
 Quit :: struct {}
+
+// Draw one more frame even if nothing happens. Skald only redraws on
+// events, and a newly shown canvas learns its size in its first frame, so
+// the graph needs a second one to fit itself.
+Redraw_Soon :: struct {}

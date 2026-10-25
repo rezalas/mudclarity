@@ -24,7 +24,7 @@ view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	if s.error != "" {
 		append(&children, components.banner(ctx, .Error, components.display_text(s.error), Msg(Dismiss_Error{})))
 	}
-	body := world_view(s, ctx) if s.screen == .World && s.ws != nil else welcome_view(s, ctx)
+	body := world_view(s, ctx) if s.screen == .World && s.world != nil else welcome_view(s, ctx)
 	append(&children, skald.flex(1, body))
 
 	page := skald.col(..children[:], spacing = th.spacing.md, padding = th.spacing.lg, bg = th.color.bg, cross_align = .Stretch)

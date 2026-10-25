@@ -27,6 +27,8 @@ command_for :: proc(effect: Effect) -> skald.Command(Msg) {
 		return skald.cmd_set_theme(Msg, skald.theme_system())
 	case Quit:
 		return skald.cmd_quit(Msg)
+	case Redraw_Soon:
+		return skald.cmd_delay(0, Msg(Redraw{}))
 	}
 	return {}
 }

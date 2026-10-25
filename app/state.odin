@@ -5,12 +5,9 @@
  */
 package app
 
-import "base:runtime"
 import "core:strings"
 
-import "../clarity"
-import "../validation"
-import "../workspace"
+import "../components"
 
 Screen :: enum u8 {
 	Welcome, // Nothing open: open or drop a world
@@ -22,24 +19,25 @@ Screen :: enum u8 {
  values and pointers; strings are heap-owned and replaced with set_text.
 */
 State :: struct {
-	screen:       Screen,
-	ws:           ^workspace.Workspace, // The open world, or nil
-	summary:      Summary,              // Counts for `ws`, computed when it loaded
-	generation:   int,                  // Bumped by every load; older results are dropped
-	loading_path: string,               // What is loading, or ""
-	error:        string,               // The last error to show, or ""
-}
-
-// Counts about a loaded world, computed once on the loading thread so the
-// view doesn't recount every frame.
-Summary :: struct {
-	rooms:        int,
-	severities:   [validation.Severity]int,
-	state_counts: [clarity.State]int,
+	screen:        Screen,
+	world:         ^World, // The open world, or nil
+	area:          int,    // The area shown, as an index into world.ws.areas
+	selected_room: int,    // Room index in that area, or -1
+	graph:         components.Room_Graph_State,
+	generation:    int,    // Bumped by every load; older results are dropped
+	loading_path:  string, // What is loading, or ""
+	error:         string, // The last error to show, or ""
 }
 
 init :: proc() -> State {
-	return {}
+	return State{selected_room = -1, graph = components.room_graph_init()}
+}
+
+// Show area `area` of the open world afresh: nothing selected, fitted.
+show_area :: proc(s: ^State, area: int) {
+	s.area = area
+	s.selected_room = -1
+	s.graph = components.room_graph_init()
 }
 
 // Whether a load is in progress.
@@ -55,13 +53,4 @@ set_text :: proc(field: ^string, value: string) {
 	if value != "" {
 		field^ = strings.clone(value)
 	}
-}
-
-// Close a workspace from the GUI thread. Workspaces are opened on a loading
-// thread with the heap allocator, so they are closed with it too, whatever
-// allocator (e.g. the debug tracking allocator) the GUI thread uses.
-@(private)
-close_workspace :: proc(ws: ^workspace.Workspace) {
-	context.allocator = runtime.heap_allocator()
-	workspace.close(ws)
 }
