@@ -89,16 +89,30 @@ check_exit_target :: proc(v: ^Validator, a: int, room: ^models.Room, dir: models
 	report_default(v, .One_Way_Exit, a, exit.line, room.vnum, exit.target, "%s from #%d leads to #%d, which has no exit back", dir_name, room.vnum, target.vnum)
 }
 
+// What an exit's flags, as written in the file, say about its door. Door
+// resets can also make or lock a door; check_door takes those into account.
+Door_Flags :: struct {
+	is_door:   bool, // A door of any kind (flag A, or closed or locked)
+	is_closed: bool,
+	is_locked: bool,
+}
+
+door_flags :: proc(exit: models.Exit) -> Door_Flags {
+	closed := has_flag_letter(exit.flags, EXIT_FLAG_CLOSED)
+	locked := has_flag_letter(exit.flags, EXIT_FLAG_LOCKED)
+	return Door_Flags{is_door = has_flag_letter(exit.flags, EXIT_FLAG_ISDOOR) || closed || locked, is_closed = closed, is_locked = locked}
+}
+
 // Locked doors need a key that exists and that something places in the world.
 // A key below zero means the door can never be locked or unlocked (act_move.c).
 @(private)
 check_door :: proc(v: ^Validator, a: int, room: ^models.Room, dir: models.Direction, exit: models.Exit, facts: ^Reset_Facts) {
 	reset_state, has_door_reset := facts.door_resets[Door{room.vnum, dir}]
-	is_door := has_door_reset || has_flag_letter(exit.flags, EXIT_FLAG_ISDOOR) || has_flag_letter(exit.flags, EXIT_FLAG_CLOSED) || has_flag_letter(exit.flags, EXIT_FLAG_LOCKED)
-	if !is_door {
+	flags := door_flags(exit)
+	if !has_door_reset && !flags.is_door {
 		return
 	}
-	is_locked := has_flag_letter(exit.flags, EXIT_FLAG_LOCKED) || (has_door_reset && reset_state == .Locked)
+	is_locked := flags.is_locked || (has_door_reset && reset_state == .Locked)
 	dir_name := formats.DIRECTION_NAMES[dir]
 
 	if exit.key > 0 {
