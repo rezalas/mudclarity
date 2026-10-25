@@ -92,3 +92,28 @@ test_room_at_point :: proc(t: ^testing.T) {
 	room, ok = room_at_point(&d, {100, 100})
 	testing.expect(t, ok && room == 2)
 }
+
+@(test)
+test_graph_focus_on_room :: proc(t: ^testing.T) {
+	area := three_rooms()
+	l := layout.compute(&area)
+	defer layout.destroy(&l)
+
+	// Before the first fit the canvas size is unknown: centre after it.
+	s := room_graph_init()
+	s = room_graph_update(s, Focus_Room{2}, &l)
+	testing.expect_value(t, s.focus, 2)
+	testing.expect_value(t, s.level, 1) // Room 102's level
+	s = room_graph_update(s, Fitted{{800, 600}}, &l)
+	testing.expect_value(t, s.focus, -1)
+	centre := to_screen(s.camera, {}, cell_center(l.rooms[2].cell))
+	testing.expect_value(t, centre, [2]f32{400, 300})
+
+	// Once fitted, focusing centres straight away, at a readable zoom.
+	s = room_graph_update(s, Focus_Room{1}, &l)
+	testing.expect_value(t, s.level, 0)
+	testing.expect(t, s.camera.zoom >= FOCUS_ZOOM)
+	testing.expect_value(t, to_screen(s.camera, {}, cell_center(l.rooms[1].cell)), [2]f32{400, 300})
+	// Out of range: ignored.
+	testing.expect_value(t, room_graph_update(s, Focus_Room{99}, &l), s)
+}
