@@ -27,7 +27,9 @@ World :: struct {
 	ws:            ^workspace.Workspace,
 	layouts:       []layout.Layout,          // layouts[i] lays out ws.areas[i]
 	marks:         [][]components.Room_Mark, // marks[i][r]: area i's room r
-	labels:        []string,                 // Area picker entries, in area order
+	labels:        []string,                 // Area picker entries ("Name (file)"), in area order
+	picker:        []int,                    // Area indexes in picker order (area_order.odin)
+	picker_labels: []string,                 // labels in picker order, for the picker
 	rooms_by_vnum: map[int]Room_Ref,         // Every room in the world (first definition wins)
 	findings:      []clarity.Reviewed_Finding, // This run's findings, merged with the review file
 	room_findings: [][][]int,                // [area][room]: indexes into findings (ROOM_CHECKS only)
@@ -73,14 +75,18 @@ world_open :: proc(paths: []string) -> (world: ^World, error: string) {
 	for area, i in ws.areas {
 		world.layouts[i] = layout.compute(area, allocator)
 		world.marks[i] = make([]components.Room_Mark, len(area.rooms), allocator)
-		name := components.display_text(area.header.name, allocator = context.temp_allocator)
-		world.labels[i] = fmt.aprintf("%s · %s", ws.names[i], name, allocator = allocator)
+		world.labels[i] = unique_label(world.labels[:i], area_label(area.header.name, ws.names[i], allocator), area.header.name, ws.names[i], allocator)
 		world.summary.rooms += len(area.rooms)
 		for room, r in area.rooms {
 			if !(room.vnum in world.rooms_by_vnum) {
 				world.rooms_by_vnum[room.vnum] = Room_Ref{i, r}
 			}
 		}
+	}
+	world.picker = area_picker_order(ws.areas, ws.names, allocator)
+	world.picker_labels = make([]string, len(ws.areas), allocator)
+	for area, i in world.picker {
+		world.picker_labels[i] = world.labels[area]
 	}
 	index_room_findings(world, allocator)
 	mark_rooms(world)
@@ -100,14 +106,28 @@ world_close :: proc(world: ^World) {
 	free(world)
 }
 
-// The index of the first area that has rooms (0 if none do).
+// The first area in picker order that has rooms (0 if none do).
 first_area_with_rooms :: proc(world: ^World) -> int {
-	for area, i in world.ws.areas {
-		if len(area.rooms) > 0 {
-			return i
+	for area in world.picker {
+		if len(world.ws.areas[area].rooms) > 0 {
+			return area
 		}
 	}
 	return 0
+}
+
+// `label`, or the same with the area's full path if an earlier area already
+// has that label (loose files with the same name in different folders), so
+// the picker can tell them apart.
+@(private = "file")
+unique_label :: proc(earlier: []string, label, name, path: string, allocator: runtime.Allocator) -> string {
+	for other in earlier {
+		if other == label {
+			shown := components.display_text(name, allocator = context.temp_allocator)
+			return fmt.aprintf("%s (%s)", shown, path, allocator = allocator)
+		}
+	}
+	return label
 }
 
 // File each room-check finding under the room it is about, in its own

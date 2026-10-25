@@ -33,6 +33,7 @@ mudclarity/
 │   ├── effects.odin         # Effect -> skald.Command; dialog and drop handlers
 │   ├── world.odin           # World: workspace + layouts, marks, labels, room lookup, findings
 │   ├── inspector_data.odin  # Resolve the selected room's exits and findings for the inspector
+│   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
 │   ├── welcome_view.odin    # Screens, one file each
@@ -506,6 +507,16 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   area's rooms and edges with nothing precomputed per frame: anything that
   needs more than that (which rooms lead up/down, each room's worst
   finding) is computed once, in `layout` or `World`.
+
+### Area picker
+
+- Entries read `Name (file)` (base name only, so loose files don't show
+  their path) and are sorted by name: case-insensitive, a leading "The",
+  "A" or "An" ignored (`SORT_ARTICLES`), ties by file name. An area without
+  a name is shown and sorted by its file name, `social.are (no name)`.
+- Areas keep their positions everywhere; only `World.picker` /
+  `picker_labels` are in picker order. The first area shown after loading
+  is the first in that order with rooms.
 
 ### Room inspector
 
