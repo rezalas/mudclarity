@@ -16,13 +16,13 @@ SKALD_ROOT="./vendor/skald"
 
 if [[ "${1:-}" == "test" ]]; then
     odin check . -collection:gui="${SKALD_ROOT}" -vet -vet-style \
-        -vet-packages:main,formats,models,validation,clarity
+        -vet-packages:main,formats,models,validation,clarity,workspace
 
     CORPUS_DEFINE=()
     if [[ -n "${RIFTSHADOW_AREA_DIR:-}" ]]; then
         CORPUS_DEFINE=(-define:MUDCLARITY_CORPUS_DIR="${RIFTSHADOW_AREA_DIR}")
     fi
-    for package in formats validation clarity; do
+    for package in formats validation clarity workspace; do
         odin test "${package}" \
             -collection:gui="${SKALD_ROOT}" \
             -vet -strict-style \
