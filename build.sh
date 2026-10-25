@@ -19,7 +19,7 @@ mkdir -p build
 # `skald/` folder. For a sibling git clone called `skald`, it's `../skald`.
 SKALD_ROOT="./vendor/skald"
 
-TEST_PACKAGES=(formats validation clarity workspace cli)
+TEST_PACKAGES=(formats validation clarity workspace cli layout)
 
 CORPUS_DEFINE=()
 if [[ -n "${RIFTSHADOW_AREA_DIR:-}" ]]; then

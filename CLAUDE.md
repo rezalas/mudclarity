@@ -564,6 +564,15 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Adding a command means adding it to `COMMANDS`; the usage and
   missing-argument messages come from the table.
 
+**Layout (`layout/`)**
+
+- Areas are built in memory with `room(vnum, {.East, 101}, ...)` and
+  `area_of(...)`; no parsing. `expect_valid` checks the invariants every
+  layout must meet (each room on its own cell, inside its component, no
+  overlapping components, edge kinds matching the geometry).
+- Seeded random areas and the corpus must stay valid; corpus layout of the
+  whole world < 250 ms.
+
 **Workspace (`workspace/`)**
 
 - Worlds are written to a temp dir with `write_world(...)` and opened like
