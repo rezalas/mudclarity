@@ -10,11 +10,13 @@ import "core:path/filepath"
 import "core:strings"
 import "core:testing"
 
+import "../testkit"
+
 @(test)
 test_open_area_list :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_open")
+	dir := testkit.temp_dir(t, "mudclarity_ws_open")
 	defer os.remove_all(dir)
-	list := write_world(t, dir, area_text("A", BASE_ROOMS), area_text("B", "#110\nD~\n~\ncity\nS\n"))
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS), testkit.area_text("B", "#110\nD~\n~\ncity\nS\n"))
 
 	ws := open_or_fail(t, list)
 	defer close(ws)
@@ -39,9 +41,9 @@ test_open_area_list :: proc(t: ^testing.T) {
 
 @(test)
 test_open_area_list_records_bad_files :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_bad_file")
+	dir := testkit.temp_dir(t, "mudclarity_ws_bad_file")
 	defer os.remove_all(dir)
-	list := write_world(t, dir, area_text("A", BASE_ROOMS), "#AREA\nunterminated")
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS), "#AREA\nunterminated")
 
 	ws := open_or_fail(t, list)
 	defer close(ws)
@@ -54,7 +56,7 @@ test_open_area_list_records_bad_files :: proc(t: ^testing.T) {
 
 @(test)
 test_open_missing_area_list :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_missing_list")
+	dir := testkit.temp_dir(t, "mudclarity_ws_missing_list")
 	defer os.remove_all(dir)
 	list, _ := filepath.join({dir, "area.lst"}, context.temp_allocator)
 
@@ -68,10 +70,10 @@ test_open_missing_area_list :: proc(t: ^testing.T) {
 
 @(test)
 test_open_bad_review_file :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_bad_review")
+	dir := testkit.temp_dir(t, "mudclarity_ws_bad_review")
 	defer os.remove_all(dir)
-	list := write_world(t, dir, area_text("A", BASE_ROOMS))
-	review := write_file(t, dir, REVIEW_FILE_NAME, "{ not json")
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS))
+	review := testkit.write_file(t, dir, REVIEW_FILE_NAME, "{ not json")
 
 	ws, err := open_area_list(list)
 	testing.expect(t, ws == nil)
@@ -84,9 +86,9 @@ test_open_bad_review_file :: proc(t: ^testing.T) {
 
 @(test)
 test_open_area_files :: proc(t: ^testing.T) {
-	dir := temp_dir(t, "mudclarity_ws_loose")
+	dir := testkit.temp_dir(t, "mudclarity_ws_loose")
 	defer os.remove_all(dir)
-	good := write_file(t, dir, "good.are", area_text("A", BASE_ROOMS))
+	good := testkit.write_file(t, dir, "good.are", testkit.area_text("A", testkit.BASE_ROOMS))
 	missing, _ := filepath.join({dir, "missing.are"}, context.temp_allocator)
 
 	ws, err := open_area_files({good, missing})
@@ -108,4 +110,30 @@ test_open_area_files :: proc(t: ^testing.T) {
 @(test)
 test_close_nil :: proc(t: ^testing.T) {
 	close(nil)
+}
+
+@(test)
+test_area_list_and_file_names :: proc(t: ^testing.T) {
+	testing.expect(t, is_area_list("area.lst"))
+	testing.expect(t, is_area_list("C:\\Riftshadow\\AREA.LST"))
+	testing.expect(t, is_area_list("/w/Area.Lst"))
+	testing.expect(t, !is_area_list("area.lst.bak"))
+	testing.expect(t, !is_area_list("midgaard.are"))
+	testing.expect(t, is_area_file("MIDGAARD.ARE"))
+	testing.expect(t, !is_area_file("area.lst"))
+}
+
+@(test)
+test_open_picks_list_or_files :: proc(t: ^testing.T) {
+	dir := testkit.temp_dir(t, "mudclarity_ws_open_dispatch")
+	defer os.remove_all(dir)
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS))
+	area, _ := filepath.join({dir, "a.are"}, context.temp_allocator)
+
+	ws, err := open({list})
+	testing.expect(t, err == nil && ws.clarity_path != "", "one area.lst opens as a world")
+	close(ws)
+	ws, err = open({area})
+	testing.expect(t, err == nil && ws.clarity_path == "", "an area file opens loose")
+	close(ws)
 }

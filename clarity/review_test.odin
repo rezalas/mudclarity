@@ -8,6 +8,8 @@ package clarity
 import "core:strings"
 import "core:testing"
 
+import "../testkit"
+
 // --- Finding IDs ---
 
 @(test)
@@ -41,7 +43,7 @@ test_bad_finding_ids :: proc(t: ^testing.T) {
 
 @(test)
 test_unreviewed_findings_are_open :: proc(t: ^testing.T) {
-	w := world_make(t, area_text("a", BASE_ROOMS))
+	w := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS))
 	defer world_destroy(&w)
 	doc := document_make("area.lst", context.temp_allocator)
 	result := world_merge(&w, &doc)
@@ -54,7 +56,7 @@ test_unreviewed_findings_are_open :: proc(t: ^testing.T) {
 
 @(test)
 test_accepted_and_flagged :: proc(t: ^testing.T) {
-	w := world_make(t, area_text("a", BASE_ROOMS))
+	w := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS))
 	defer world_destroy(&w)
 	doc := document_make("area.lst", context.temp_allocator)
 	set_review(&doc, {"a.are", "Broken_Exit", 100, 150}, REVIEW_FLAGGED, "fix me", w.hashes[0], TEST_DATE, context.temp_allocator)
@@ -70,14 +72,14 @@ test_accepted_and_flagged :: proc(t: ^testing.T) {
 
 @(test)
 test_changed_file_needs_review_but_stays_matched :: proc(t: ^testing.T) {
-	before := world_make(t, area_text("a", BASE_ROOMS))
+	before := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS))
 	defer world_destroy(&before)
 	doc := document_make("area.lst", context.temp_allocator)
 	set_review(&doc, {"a.are", "Orphan_Room", 102, 0}, REVIEW_ACCEPTED, "", before.hashes[0], TEST_DATE, context.temp_allocator)
 
 	// Longer descriptions move every line, but the finding's key is the same.
-	edited, _ := strings.replace_all(BASE_ROOMS, "~\ncity", "\nMore text here.\n~\ncity", context.temp_allocator)
-	after := world_make(t, area_text("a", edited))
+	edited, _ := strings.replace_all(testkit.BASE_ROOMS, "~\ncity", "\nMore text here.\n~\ncity", context.temp_allocator)
+	after := world_make(t, testkit.area_text("a", edited))
 	defer world_destroy(&after)
 	result := world_merge(&after, &doc)
 	orphan := finding(t, result, .Orphan_Room)
@@ -90,8 +92,8 @@ test_changed_file_needs_review_but_stays_matched :: proc(t: ^testing.T) {
 test_reviews_of_fixed_findings_are_resolved :: proc(t: ^testing.T) {
 	doc := document_make("area.lst", context.temp_allocator)
 	set_review(&doc, {"a.are", "Broken_Exit", 100, 150}, REVIEW_FLAGGED, "", "x", TEST_DATE, context.temp_allocator)
-	fixed, _ := strings.replace(BASE_ROOMS, "D EAST 150", "D EAST 101", 1, context.temp_allocator)
-	w := world_make(t, area_text("a", fixed))
+	fixed, _ := strings.replace(testkit.BASE_ROOMS, "D EAST 150", "D EAST 101", 1, context.temp_allocator)
+	w := world_make(t, testkit.area_text("a", fixed))
 	defer world_destroy(&w)
 	result := world_merge(&w, &doc)
 	testing.expect_value(t, len(result.resolved), 1)
@@ -100,7 +102,7 @@ test_reviews_of_fixed_findings_are_resolved :: proc(t: ^testing.T) {
 
 @(test)
 test_reviews_with_unknown_checks_are_reported :: proc(t: ^testing.T) {
-	w := world_make(t, area_text("a", BASE_ROOMS))
+	w := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS))
 	defer world_destroy(&w)
 	doc := document_make("area.lst", context.temp_allocator)
 	set_review(&doc, {"a.are", "Retired_Check", 100, 0}, REVIEW_ACCEPTED, "", w.hashes[0], TEST_DATE, context.temp_allocator)
@@ -111,7 +113,7 @@ test_reviews_with_unknown_checks_are_reported :: proc(t: ^testing.T) {
 
 @(test)
 test_snapshot_new_and_fixed :: proc(t: ^testing.T) {
-	before := world_make(t, area_text("a", BASE_ROOMS))
+	before := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS))
 	defer world_destroy(&before)
 	doc := document_make("area.lst", context.temp_allocator)
 	refresh(&doc, world_files(&before), before.diagnostics, context.temp_allocator)
@@ -124,9 +126,9 @@ test_snapshot_new_and_fixed :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(same.changed_files), 0)
 
 	// Fix the broken exit and give room 102 a new broken one.
-	edited, _ := strings.replace(BASE_ROOMS, "D EAST 150", "D EAST 101", 1, context.temp_allocator)
+	edited, _ := strings.replace(testkit.BASE_ROOMS, "D EAST 150", "D EAST 101", 1, context.temp_allocator)
 	edited, _ = strings.replace(edited, "#102\nC~\n~\ncity\n", "#102\nC~\n~\ncity\nD UP 170 0 0\n~\n~\n", 1, context.temp_allocator)
-	after := world_make(t, area_text("a", edited))
+	after := world_make(t, testkit.area_text("a", edited))
 	defer world_destroy(&after)
 	result := world_merge(&after, &doc)
 	testing.expect_value(t, len(result.fixed), 1)
@@ -137,12 +139,12 @@ test_snapshot_new_and_fixed :: proc(t: ^testing.T) {
 
 @(test)
 test_added_and_removed_files :: proc(t: ^testing.T) {
-	one := world_make(t, area_text("a", BASE_ROOMS))
+	one := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS))
 	defer world_destroy(&one)
 	doc := document_make("area.lst", context.temp_allocator)
 	refresh(&doc, world_files(&one), one.diagnostics, context.temp_allocator)
 
-	two := world_make(t, area_text("a", BASE_ROOMS), area_text("b", BASE_ROOMS))
+	two := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS), testkit.area_text("b", testkit.BASE_ROOMS))
 	defer world_destroy(&two)
 	result := world_merge(&two, &doc)
 	testing.expect_value(t, len(result.added_files), 1)
@@ -184,7 +186,7 @@ test_issue_ids_increase :: proc(t: ^testing.T) {
 
 @(test)
 test_refresh_keeps_user_data :: proc(t: ^testing.T) {
-	w := world_make(t, area_text("a", BASE_ROOMS))
+	w := world_make(t, testkit.area_text("a", testkit.BASE_ROOMS))
 	defer world_destroy(&w)
 	doc := document_make("area.lst", context.temp_allocator)
 	set_review(&doc, {"a.are", "Orphan_Room", 102, 0}, REVIEW_ACCEPTED, "", w.hashes[0], TEST_DATE, context.temp_allocator)

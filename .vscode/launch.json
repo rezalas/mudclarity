@@ -1,0 +1,81 @@
+{
+    // Debugging uses CodeLLDB (vadimcn.vscode-lldb), on Windows, macOS and
+    // Linux; Windows builds get .exe paths. "Run Without Debugging" (Ctrl+F5)
+    // runs the same configurations without the debugger.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "mudclarity: GUI",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "mudclarity: GUI on the world",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
+            "args": ["open", "${workspaceFolder}/../riftshadow/area/area.lst"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "mudclarity: check the world",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
+            "args": ["${workspaceFolder}/../riftshadow/area/area.lst"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "mudclarity: custom arguments",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
+            // A string is split like a shell command line.
+            "args": "${input:cliArgs}",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "tests: debug a package",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/${input:testPackage}_test_debug",
+            "windows": { "program": "${workspaceFolder}/build/${input:testPackage}_test_debug.exe" },
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build tests (debug)"
+        },
+        {
+            "name": "tests: debug one test",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/single_test_debug",
+            "windows": { "program": "${workspaceFolder}/build/single_test_debug.exe" },
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build test (debug, one)"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "cliArgs",
+            "type": "promptString",
+            "description": "Arguments for mudclarity (paths are relative to the repo)",
+            "default": "check ../riftshadow/area/area.lst --all"
+        },
+        {
+            "id": "testPackage",
+            "type": "pickString",
+            "description": "Package whose tests to debug",
+            "options": ["formats", "validation", "clarity", "workspace", "cli", "layout", "components", "app"],
+            "default": "formats"
+        }
+    ]
+}

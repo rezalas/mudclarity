@@ -22,11 +22,38 @@ the ROM format; see **Area File Format** below.
 ```text
 mudclarity/
 ├── mudclarity.odin          # Entry point (package main): GUI with no arguments, else the CLI
-├── build.sh                 # Build script
-├── app/                     # (planned) package app: GUI root state, Msg routing, screens
-├── components/              # (planned) package components: reusable GUI components
-├── layout/                  # (planned) package layout: room grid placement, no GUI code
-├── cli/                     # (planned) package cli: command-line commands
+├── build.sh / build.bat     # Build scripts (macOS/Linux, Windows): run tools/build
+├── tools/build/             # package build: the build script itself, in Odin
+├── .gitattributes           # Line endings pinned per file type; area files untouched
+├── app/                     # package app: the GUI (Elm root, screens, loading)
+│   ├── app.odin             # run(paths): Skald wiring; debug leak report
+│   ├── state.odin           # State, Summary, init; string and workspace ownership
+│   ├── msg.odin             # Msg union and Effect union
+│   ├── update.odin          # step (pure: State, Msg -> State, Effect) and update
+│   ├── effects.odin         # Effect -> skald.Command; dialog and drop handlers
+│   ├── loading.odin         # load_world worker (cmd_thread)
+│   ├── view.odin            # Root view; startup paths
+│   ├── welcome_view.odin    # Screens, one file each
+│   ├── world_view.odin
+│   └── *_test.odin
+├── components/              # package components: reusable GUI pieces
+│   ├── common.odin          # heading, caption, stat, banner (generic over $Msg)
+│   ├── text.odin            # display_text: Latin-1 file text -> safe UTF-8
+│   └── *_test.odin
+├── layout/                  # package layout: room grid placement, no GUI code
+│   ├── layout.odin          # Layout, Cell, Edge; compute / destroy / room_at
+│   ├── place.odin           # Walk exits per component; links; vnum index
+│   ├── island.odin          # Grow an island; fit it at the nearest free spot
+│   ├── pack.odin            # Pack components side by side
+│   ├── edges.odin           # Edges (straight/bent/vertical, two-way) and external exits
+│   └── *_test.odin
+├── cli/                     # package cli: command-line commands
+│   ├── cli.odin             # run(args, output) -> exit code; Output; shared helpers
+│   ├── commands.odin        # COMMANDS table (also builds the usage text)
+│   ├── check.odin           # check and its summary
+│   ├── review.odin          # save, accept, flag, reopen
+│   ├── records.odin         # note, issue
+│   └── *_test.odin
 ├── workspace/               # package workspace: a loaded world, its findings and review file
 │   ├── workspace.odin       # open_area_list / open_area_files / close
 │   ├── review.odin          # Merge, finding lookup, review edits, save
@@ -65,8 +92,11 @@ mudclarity/
 │   ├── reset.odin           # Reset commands
 │   ├── program.odin         # #IMPROGS / #SPECS bindings
 │   └── types.odin           # Shared types (Direction, Dice, ...)
+├── testkit/                 # package testkit: helpers imported only by *_test.odin
 ├── test_data/               # Real and hand-made .are files for tests
 ├── vendor/skald/            # Skald GUI library (git submodule)
+├── .vscode/                 # Tasks, launch (debug) configs, recommended extensions
+├── ols.json                 # Odin language server: the `gui` collection
 └── CLAUDE.md                # This file
 ```
 
@@ -401,8 +431,13 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   east), so the layout must detect collisions and fall back gracefully.
   `up`/`down` exits need a separate visual treatment (e.g. z-levels).
   Layout lives in `layout/`, is computed once per load (never per frame) and
-  is iterative, not recursive.
-- **Screens**: Welcome (open an `area.lst`, recent files, drop a file) and
+  is iterative, not recursive. Per area: cells are `(x, y, level)`; a room
+  whose cell is taken starts an *island* that moves as a block to the
+  nearest free spot, so a conflict bends one connection instead of
+  cascading; exits that don't line up are `Bent` edges; disconnected
+  components are packed apart. On the corpus (~10k rooms, ~15 ms) about 1%
+  of rooms are displaced. Exits to vnum 0 are look-only and never edges.
+- **Screens**: Welcome (open an `area.lst` or drop files; recent files are planned) and
   World: toolbar (area picker, search, zoom, filters) over room inspector
   (left), room graph (center) and findings log (right). Review actions
   (accept, flag, reopen, note, issue) are dialogs.
@@ -431,9 +466,21 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 ### GUI safety
 
 - Loading and validation run in `cmd_thread` workers. Each load carries a
-  generation number so results from a superseded load are dropped. Workers
-  never assert or panic (that kills the process); errors come back as `Msg`
-  variants with heap-allocated text.
+  generation number so results from a superseded load are dropped (and
+  their workspace freed). Workers never assert or panic (that kills the
+  process); errors come back as `Msg` variants with heap-allocated text.
+- **Memory that crosses threads uses `runtime.heap_allocator()`**: request
+  paths, workspaces, error text, and the `cmd_thread` command itself (Skald
+  allocates its job there and frees it on the worker). The GUI thread's
+  allocator is a tracking allocator in debug builds, so mixing the two is
+  reported as leaks and bad frees. `close_workspace` closes under the heap.
+- `update` calls `step`, which returns an `Effect` instead of a
+  `skald.Command`; `command_for` turns it into one. Tests check effects
+  without Skald allocating commands.
+- Skald has no startup command, so the first `view` sends `Open_Paths` for
+  `mudclarity open <path>`; opening bumps the generation, so it is sent once.
+- Closing the window sends `Quit_Requested` (`on_close_request`), which
+  frees the workspace before `cmd_quit`.
 - A loaded `workspace` owns all its memory and is freed at once on unload.
   `Msg` strings live in the frame arena: clone them before keeping them.
   Debug builds use the tracking allocator.
@@ -445,36 +492,95 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 
 ## Build & Development
 
+Mud Clarity is developed on Windows, macOS and Linux. `build.sh` (macOS,
+Linux) and `build.bat` (Windows) only run `tools/build/build.odin`, which
+holds every command and flag; change the build there, never in the
+wrappers. The examples use `./build.sh`; on Windows use `build.bat` and
+`build\mudclarity.exe`.
+
 ```bash
 ./build.sh          # Debug build to build/mudclarity
-./build.sh run      # Build and run
-./build.sh test     # Vet and run tests (see Testing)
-./build/mudclarity path/to/area.lst   # Until the GUI exists: validate the whole world
+./build.sh run [args]   # Build and run (args go to mudclarity)
+./build.sh test     # Vet, cross-OS type-check, and run tests (see Testing)
+./build.sh debug-tests [name]         # Test binaries for a debugger (see VS Code)
+./build.sh help     # The build commands
+./build/mudclarity                    # Open the GUI
+./build/mudclarity open path/to/area.lst   # Open the GUI on a world
+./build/mudclarity path/to/area.lst   # CLI: validate the whole world
 ./build/mudclarity file.are ...       # ...or just these files
-./build/mudclarity                    # Usage, including the review commands below
+./build/mudclarity help               # Usage, including the review commands below
 
 # Manual
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
 # Type-check only. Vet only our packages: vendor/skald does not pass -vet.
-odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace,cli,layout,components,app
 ```
+
+`-strict-style` applies to every package compiled, Skald included, so tests
+of packages that import Skald (`app`, `components`) use `-vet-style` with
+`-vet-packages` instead (see `style_flags` in `tools/build/build.odin`).
+
+`test` also type-checks the program for macOS (arm64, amd64) and Linux
+(amd64, arm64) whatever the host, so platform-specific mistakes show up on
+any machine. `odin check` can only target Windows from Windows (it needs the
+Windows SDK), so Windows is covered when `test` runs there.
+
+### Cross-platform rules
+
+- Paths go through `core:path/filepath` (`join`, `dir`, `base`, `ext`);
+  never build them with `/` or `\`. Odin accepts `/` in its own flags.
+- File extensions are compared ignoring case (`workspace.is_area_list`,
+  `workspace.is_area_file`): `AREA.LST` is common on Windows.
+- Executables get `.exe` on Windows (`EXE` in the build tool; `windows`
+  overrides in `.vscode/launch.json`).
+- No shell-specific logic outside `build.sh`/`build.bat`, which stay thin.
+  VS Code tasks pass `args` arrays so each OS's shell quotes them.
+- Line endings are pinned in `.gitattributes`: sources LF, `.bat` CRLF, and
+  area files (`test_data/`, `*.are`, `*.lst`) are never converted, since
+  their bytes and hashes are part of the tests.
+- Text from files is bytes, never assumed UTF-8 (see `display_text`).
 
 ### Dependencies
 
 - **Odin**: `dev-2026-10` or newer (Odin's API still changes, so report
   breakage on newer releases rather than pinning an old one)
 - **Skald**: git submodule at `vendor/skald` (`git submodule update --init`)
-- **SDL3**: required at runtime by Skald (see `vendor/skald/PLATFORMS.md`)
-- **Odin's STB libraries** (Linux, once per Odin install): Skald's image
-  support imports `vendor:stb/image`, which Odin ships as source. Build it
-  with `$ODIN_ROOT/vendor/stb/src/build_stb.sh` (needs write access to the
-  Odin install, so often `sudo`). Skald's docs say this is only needed for
-  the fontstash backend and suggest `make`; both are out of date.
-- **Vulkan**: on macOS, the LunarG Vulkan SDK (provides MoltenVK); source its
-  `setup-env.sh` before running
+- **SDL3** and **Vulkan** at runtime (details: `vendor/skald/PLATFORMS.md`):
+  - **Windows**: Visual Studio Build Tools (MSVC + Windows SDK); build from a
+    Developer Command Prompt or PowerShell so the linker is found.
+    `SDL3.dll` ships with Odin (`vendor\sdl3`) and the build tool copies it
+    into `build\`. The Vulkan loader comes with GPU drivers.
+  - **macOS**: the LunarG Vulkan SDK (provides MoltenVK); source its
+    `setup-env.sh` before running. Odin's SDL3 and STB come prebuilt.
+  - **Linux**: SDL3 (e.g. `sdl3` / `libsdl3-dev`) and a Vulkan loader and
+    driver from the distro. Odin's STB libraries must be built once per
+    Odin install: `$ODIN_ROOT/vendor/stb/src/build_stb.sh` (needs write
+    access to the Odin install, so often `sudo`). Skald's docs say this is
+    only needed for the fontstash backend and suggest `make`; both are out
+    of date: `vendor:stb/image` is always used.
 
 Build output goes to `build/` (gitignored).
+
+### VS Code
+
+Recommended extensions (`.vscode/extensions.json`): OLS (`danielgavin.ols`)
+for the language server and CodeLLDB (`vadimcn.vscode-lldb`) for debugging.
+Every task calls `build.sh`, or `build.bat` on Windows, so flags are only
+ever changed in `tools/build`. Launch configurations use `.exe` paths on
+Windows; CodeLLDB works on all three OSes.
+
+- **Build** (Ctrl+Shift+B) is `./build.sh`; **Run Test Task** offers `test`
+  (the default), `test (with corpus)` (uses `../riftshadow/area`) and
+  `test (one)`, which prompts for `<package>.<test>`. Compiler, vet and
+  test failures show up in the Problems panel.
+- **Run and Debug** configurations (F5 to debug, Ctrl+F5 to run without the
+  debugger): `mudclarity: GUI` (the default), `mudclarity: GUI on the world`,
+  `mudclarity: check the world`, `mudclarity: custom arguments` (prompts for
+  a command line), `tests: debug a package` and `tests: debug one test`.
+- Test binaries for debugging come from `./build.sh debug-tests`. They run
+  tests on one thread so breakpoints hit in order. `ODIN_TEST_NAMES` is a
+  compile-time setting, so debugging one test rebuilds it on its own.
 
 ## Testing
 
@@ -483,9 +589,9 @@ Build output goes to `build/` (gitignored).
 RIFTSHADOW_AREA_DIR=../riftshadow/area \
     ./build.sh test                 # also parse and validate every area in area.lst
 
-# Run selected tests
-odin test formats -define:ODIN_TEST_NAMES=formats.test_room_basic_fields
-odin test validation -define:ODIN_TEST_NAMES=validation.test_one_way_exit
+# Run one test (<package>.<test>)
+./build.sh test formats.test_room_basic_fields
+./build.sh test validation.test_one_way_exit
 ```
 
 Tests live next to the code as `<package>/*_test.odin`, so private
@@ -512,6 +618,39 @@ Every change needs tests.
 - Merge states, snapshot new/fixed, added/removed/changed files, and edits
   use small worlds from `world_make(...)`.
 - Corpus test saves and reloads a review of the whole world in a temp dir.
+
+Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
+`write_world`, ...) live in `testkit/`; a suite's own helpers stay in its
+`helpers_test.odin`.
+
+**CLI (`cli/`)**
+
+- `run_cli(args...)` runs a command line with output captured in string
+  builders; tests check exit codes and exact messages, and read the saved
+  `area.clarity` back. A refused edit must not write the file.
+- Adding a command means adding it to `COMMANDS`; the usage and
+  missing-argument messages come from the table.
+
+**GUI (`app/`, `components/`)**
+
+- `step` is tested message by message; effects are checked as values.
+  `load_now` runs the real `load_world` worker synchronously on a world from
+  `testkit`. State is freed with `finish(s)` (a quit), so the tracking
+  allocator catches leaked strings. Workspaces live on the plain heap by
+  design, so a leaked workspace is *not* caught by the test runner.
+- `display_text` is tested on Latin-1, control and C1 bytes, newlines,
+  length limits, and every byte value producing valid UTF-8.
+- Check the window itself by running it (see VS Code, or `xdotool` plus
+  `import -window <id>` to screenshot only the app's own window).
+
+**Layout (`layout/`)**
+
+- Areas are built in memory with `room(vnum, {.East, 101}, ...)` and
+  `area_of(...)`; no parsing. `expect_valid` checks the invariants every
+  layout must meet (each room on its own cell, inside its component, no
+  overlapping components, edge kinds matching the geometry).
+- Seeded random areas and the corpus must stay valid; corpus layout of the
+  whole world < 250 ms.
 
 **Workspace (`workspace/`)**
 
@@ -560,7 +699,8 @@ and reject entries containing path separators or `..`.
 
 ### Review Checklist
 
-- [ ] `./build.sh test` passes (vets our packages; tests use `-vet -strict-style`)
+- [ ] `./build.sh test` (or `build.bat test`) passes: vet, cross-OS checks, tests
+- [ ] Nothing OS-specific outside `tools/build` (see Cross-platform rules)
 - [ ] New or changed checks are calibrated against the corpus
 - [ ] Follows naming and style conventions
 - [ ] No ignored error returns
