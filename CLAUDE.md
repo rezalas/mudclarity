@@ -25,7 +25,13 @@ mudclarity/
 ├── build.sh                 # Build script
 ├── app/                     # (planned) package app: GUI root state, Msg routing, screens
 ├── components/              # (planned) package components: reusable GUI components
-├── layout/                  # (planned) package layout: room grid placement, no GUI code
+├── layout/                  # package layout: room grid placement, no GUI code
+│   ├── layout.odin          # Layout, Cell, Edge; compute / destroy / room_at
+│   ├── place.odin           # Walk exits per component; links; vnum index
+│   ├── island.odin          # Grow an island; fit it at the nearest free spot
+│   ├── pack.odin            # Pack components side by side
+│   ├── edges.odin           # Edges (straight/bent/vertical, two-way) and external exits
+│   └── *_test.odin
 ├── cli/                     # package cli: command-line commands
 │   ├── cli.odin             # run(args, output) -> exit code; Output; shared helpers
 │   ├── commands.odin        # COMMANDS table (also builds the usage text)
@@ -410,7 +416,12 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   east), so the layout must detect collisions and fall back gracefully.
   `up`/`down` exits need a separate visual treatment (e.g. z-levels).
   Layout lives in `layout/`, is computed once per load (never per frame) and
-  is iterative, not recursive.
+  is iterative, not recursive. Per area: cells are `(x, y, level)`; a room
+  whose cell is taken starts an *island* that moves as a block to the
+  nearest free spot, so a conflict bends one connection instead of
+  cascading; exits that don't line up are `Bent` edges; disconnected
+  components are packed apart. On the corpus (~10k rooms, ~15 ms) about 1%
+  of rooms are displaced. Exits to vnum 0 are look-only and never edges.
 - **Screens**: Welcome (open an `area.lst`, recent files, drop a file) and
   World: toolbar (area picker, search, zoom, filters) over room inspector
   (left), room graph (center) and findings log (right). Review actions
