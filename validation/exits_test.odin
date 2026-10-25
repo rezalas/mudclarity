@@ -7,6 +7,8 @@ package validation
 
 import "core:testing"
 
+import "../models"
+
 // Two rooms joined both ways: the baseline every exit test starts from.
 @(private = "file")
 linked_pair :: proc() -> string {
@@ -176,4 +178,12 @@ test_key_given_to_mob :: proc(t: ^testing.T) {
 test_door_reset_without_exit :: proc(t: ^testing.T) {
 	text := test_area("a", 100, 199, sections(linked_pair(), resets("DOOR 100 EAST CLOSED")))
 	expect_one(t, run_one(t, text), .Door_Reset_No_Exit, .Warning, vnum = 100)
+}
+
+@(test)
+test_door_flags :: proc(t: ^testing.T) {
+	testing.expect_value(t, door_flags(models.Exit{flags = "0"}), Door_Flags{})
+	testing.expect_value(t, door_flags(models.Exit{flags = "A"}), Door_Flags{is_door = true})
+	testing.expect_value(t, door_flags(models.Exit{flags = "AB"}), Door_Flags{is_door = true, is_closed = true})
+	testing.expect_value(t, door_flags(models.Exit{flags = "C"}), Door_Flags{is_door = true, is_locked = true})
 }
