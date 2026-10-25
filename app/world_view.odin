@@ -14,7 +14,7 @@ import "../components"
 import "../formats"
 
 // A world is open: its name and area picker, summary counts, files that
-// failed to load, and the room graph of the chosen area.
+// failed to load, and the chosen area: the room inspector beside its graph.
 world_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	th := ctx.theme
 	world := s.world
@@ -41,8 +41,13 @@ world_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		marks    = world.marks[s.area],
 		selected = s.selected_room,
 	}
-	append(&children, skald.flex(1, skald.map_msg(ctx, graph, components.room_graph_view, wrap_graph)))
-	append(&children, components.caption(ctx, selection_line(s)))
+	body := skald.row(
+		components.room_inspector_view(ctx, inspector_data(s), exit_followed),
+		skald.flex(1, skald.map_msg(ctx, graph, components.room_graph_view, wrap_graph)),
+		spacing = th.spacing.md,
+		cross_align = .Stretch,
+	)
+	append(&children, skald.flex(1, body))
 	return skald.col(..children[:], spacing = th.spacing.md, cross_align = .Stretch)
 }
 
@@ -92,17 +97,6 @@ review_line :: proc(s: State) -> string {
 	return fmt.tprintf("Review: %d open, %d flagged, %d accepted, %d need review", c[.Open], c[.Flagged], c[.Accepted], c[.Needs_Review])
 }
 
-// The selected room, until the inspector shows it properly.
-@(private = "file")
-selection_line :: proc(s: State) -> string {
-	area := s.world.ws.areas[s.area]
-	if s.selected_room < 0 || s.selected_room >= len(area.rooms) {
-		return fmt.tprintf("%d rooms in this area. Click a room to select it.", len(area.rooms))
-	}
-	room := area.rooms[s.selected_room]
-	return fmt.tprintf("Selected: #%d %s", room.vnum, components.display_text(room.name))
-}
-
 @(private = "file")
 area_picked :: proc(label: string) -> Msg {
 	return Area_Picked{label = label}
@@ -111,6 +105,11 @@ area_picked :: proc(label: string) -> Msg {
 @(private = "file")
 wrap_graph :: proc(m: components.Room_Graph_Msg) -> Msg {
 	return Graph{msg = m}
+}
+
+@(private = "file")
+exit_followed :: proc(target: int) -> Msg {
+	return Exit_Followed{target = target}
 }
 
 @(private = "file")

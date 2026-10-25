@@ -24,12 +24,21 @@ import "../workspace"
  (see loading.odin).
 */
 World :: struct {
-	ws:      ^workspace.Workspace,
-	layouts: []layout.Layout,         // layouts[i] lays out ws.areas[i]
-	marks:   [][]components.Room_Mark, // marks[i][r]: area i's room r
-	labels:  []string,                // Area picker entries, in area order
-	summary: Summary,
-	arena:   virtual.Arena,
+	ws:            ^workspace.Workspace,
+	layouts:       []layout.Layout,          // layouts[i] lays out ws.areas[i]
+	marks:         [][]components.Room_Mark, // marks[i][r]: area i's room r
+	labels:        []string,                 // Area picker entries, in area order
+	rooms_by_vnum: map[int]Room_Ref,         // Every room in the world (first definition wins)
+	findings:      []clarity.Reviewed_Finding, // This run's findings, merged with the review file
+	room_findings: [][][]int,                // [area][room]: indexes into findings (ROOM_CHECKS only)
+	summary:       Summary,
+	arena:         virtual.Arena,
+}
+
+// Where a room is: its area and its index in that area's rooms.
+Room_Ref :: struct {
+	area: int,
+	room: int,
 }
 
 // Counts about a world for its summary.
@@ -55,7 +64,9 @@ world_open :: proc(paths: []string) -> (world: ^World, error: string) {
 	}
 	allocator := virtual.arena_allocator(&world.arena)
 
-	result := workspace.merge(ws, context.temp_allocator)
+	result := workspace.merge(ws, allocator)
+	world.findings = result.findings
+	world.rooms_by_vnum = make(map[int]Room_Ref, allocator)
 	world.layouts = make([]layout.Layout, len(ws.areas), allocator)
 	world.marks = make([][]components.Room_Mark, len(ws.areas), allocator)
 	world.labels = make([]string, len(ws.areas), allocator)
@@ -65,8 +76,14 @@ world_open :: proc(paths: []string) -> (world: ^World, error: string) {
 		name := components.display_text(area.header.name, allocator = context.temp_allocator)
 		world.labels[i] = fmt.aprintf("%s · %s", ws.names[i], name, allocator = allocator)
 		world.summary.rooms += len(area.rooms)
+		for room, r in area.rooms {
+			if !(room.vnum in world.rooms_by_vnum) {
+				world.rooms_by_vnum[room.vnum] = Room_Ref{i, r}
+			}
+		}
 	}
-	mark_rooms(world, result)
+	index_room_findings(world, allocator)
+	mark_rooms(world)
 	world.summary.severities = validation.count_by_severity(ws.diagnostics)
 	world.summary.state_counts = result.state_counts
 	return world, ""
@@ -93,27 +110,57 @@ first_area_with_rooms :: proc(world: ^World) -> int {
 	return 0
 }
 
-// Mark each room with its worst finding that isn't accepted. Only checks
-// whose vnum is a room count (validation.ROOM_CHECKS).
+// File each room-check finding under the room it is about, in its own
+// area (two areas can reuse a vnum by mistake, so this goes by area).
 @(private = "file")
-mark_rooms :: proc(world: ^World, result: clarity.Review_Result) {
-	indexes := make([]map[int]int, len(world.ws.areas), context.temp_allocator)
-	for area, i in world.ws.areas {
+index_room_findings :: proc(world: ^World, allocator: runtime.Allocator) {
+	areas := world.ws.areas
+	indexes := make([]map[int]int, len(areas), context.temp_allocator)
+	lists := make([][][dynamic]int, len(areas), context.temp_allocator)
+	for area, i in areas {
 		indexes[i] = layout.vnum_index(area, context.temp_allocator)
+		lists[i] = make([][dynamic]int, len(area.rooms), context.temp_allocator)
 	}
-	for f in result.findings {
+	for f, n in world.findings {
 		d := f.diagnostic
-		if f.state == .Accepted || d.check not_in validation.ROOM_CHECKS {
+		if d.check not_in validation.ROOM_CHECKS {
 			continue
 		}
-		room, ok := indexes[d.area][d.vnum]
-		if !ok {
-			continue
+		if room, ok := indexes[d.area][d.vnum]; ok {
+			if lists[d.area][room] == nil {
+				lists[d.area][room] = make([dynamic]int, context.temp_allocator)
+			}
+			append(&lists[d.area][room], n)
 		}
-		mark := &world.marks[d.area][room]
-		// Severity order is Error < Warning < Info: lower is worse.
-		if !mark.has_finding || d.severity < mark.worst {
-			mark^ = {has_finding = true, worst = d.severity}
+	}
+	world.room_findings = make([][][]int, len(areas), allocator)
+	for area, i in areas {
+		world.room_findings[i] = make([][]int, len(area.rooms), allocator)
+		for list, r in lists[i] {
+			if len(list) > 0 {
+				world.room_findings[i][r] = make([]int, len(list), allocator)
+				copy(world.room_findings[i][r], list[:])
+			}
+		}
+	}
+}
+
+// Mark each room with its worst finding that isn't accepted.
+@(private = "file")
+mark_rooms :: proc(world: ^World) {
+	for rooms, a in world.room_findings {
+		for list, r in rooms {
+			for n in list {
+				f := world.findings[n]
+				if f.state == .Accepted {
+					continue
+				}
+				mark := &world.marks[a][r]
+				// Severity order is Error < Warning < Info: lower is worse.
+				if !mark.has_finding || f.diagnostic.severity < mark.worst {
+					mark^ = {has_finding = true, worst = f.diagnostic.severity}
+				}
+			}
 		}
 	}
 }
