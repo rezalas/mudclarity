@@ -41,6 +41,27 @@ Workspace :: struct {
 // File name of the review file, next to area.lst.
 REVIEW_FILE_NAME :: "area.clarity"
 
+// Open a world: an area list when `paths` is one area.lst, otherwise loose
+// area files. See open_area_list and open_area_files.
+open :: proc(paths: []string) -> (ws: ^Workspace, err: Error) {
+	if len(paths) == 1 && is_area_list(paths[0]) {
+		return open_area_list(paths[0])
+	}
+	return open_area_files(paths)
+}
+
+// Whether `path` names an area list. Extensions are compared ignoring case:
+// Windows and macOS file systems usually ignore it too, so AREA.LST is the
+// same file as area.lst.
+is_area_list :: proc(path: string) -> bool {
+	return strings.equal_fold(filepath.ext(path), ".lst")
+}
+
+// Whether `path` names an area file (ends in .are, in any case).
+is_area_file :: proc(path: string) -> bool {
+	return strings.equal_fold(filepath.ext(path), ".are")
+}
+
 // Load every area in the area.lst at `path`, validate the world and load
 // area.clarity next to it (or start a new one). Files that fail to parse are
 // recorded in `ws.set.failures`; only an unreadable list or review file is an

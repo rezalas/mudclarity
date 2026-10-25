@@ -6,10 +6,11 @@
 package app
 
 import "base:runtime"
-import "core:path/filepath"
 import "core:strings"
 
 import "gui:skald"
+
+import "../workspace"
 
 // The update Skald calls: step, then turn the effect into a Command.
 update :: proc(s: State, m: Msg) -> (State, skald.Command(Msg)) {
@@ -86,13 +87,13 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 // (a whole world), else every .are file, else nothing. Points into `paths`.
 world_paths :: proc(paths: []string) -> []string {
 	for path in paths {
-		if strings.to_lower(filepath.ext(path), context.temp_allocator) == ".lst" {
+		if workspace.is_area_list(path) {
 			return paths_of(path)
 		}
 	}
 	areas := make([dynamic]string, context.temp_allocator)
 	for path in paths {
-		if strings.to_lower(filepath.ext(path), context.temp_allocator) == ".are" {
+		if workspace.is_area_file(path) {
 			append(&areas, path)
 		}
 	}

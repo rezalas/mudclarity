@@ -9,7 +9,6 @@ import "core:fmt"
 import "core:io"
 import "core:os"
 import "core:slice"
-import "core:strings"
 
 import "../formats"
 import "../workspace"
@@ -81,7 +80,7 @@ run :: proc(args: []string, output: Output) -> int {
 	}
 	paths := args
 	if command.needs_area_list {
-		if !strings.has_suffix(args[0], ".lst") {
+		if !workspace.is_area_list(args[0]) {
 			return usage_error(&call, "%s needs an area.lst, not %s", command.name, args[0])
 		}
 		if len(args) - 1 < command.min_args {
@@ -132,12 +131,7 @@ save_and_report :: proc(c: ^Call, done: string, args: ..any) -> int {
 @(private = "file")
 open_world :: proc(output: Output, paths: []string) -> (ws: ^workspace.Workspace, ok: bool) {
 	err: workspace.Error
-	if len(paths) == 1 && strings.has_suffix(paths[0], ".lst") {
-		ws, err = workspace.open_area_list(paths[0])
-	} else {
-		ws, err = workspace.open_area_files(paths)
-	}
-	if err != nil {
+	if ws, err = workspace.open(paths); err != nil {
 		fmt.wprintln(output.err, workspace.error_message(err, context.temp_allocator))
 		return nil, false
 	}
