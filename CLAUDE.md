@@ -22,7 +22,9 @@ the ROM format; see **Area File Format** below.
 ```text
 mudclarity/
 ├── mudclarity.odin          # Entry point (package main): GUI with no arguments, else the CLI
-├── build.sh                 # Build script
+├── build.sh / build.bat     # Build scripts (macOS/Linux, Windows): run tools/build
+├── tools/build/             # package build: the build script itself, in Odin
+├── .gitattributes           # Line endings pinned per file type; area files untouched
 ├── app/                     # package app: the GUI (Elm root, screens, loading)
 │   ├── app.odin             # run(paths): Skald wiring; debug leak report
 │   ├── state.odin           # State, Summary, init; string and workspace ownership
@@ -490,11 +492,18 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 
 ## Build & Development
 
+Mud Clarity is developed on Windows, macOS and Linux. `build.sh` (macOS,
+Linux) and `build.bat` (Windows) only run `tools/build/build.odin`, which
+holds every command and flag; change the build there, never in the
+wrappers. The examples use `./build.sh`; on Windows use `build.bat` and
+`build\mudclarity.exe`.
+
 ```bash
 ./build.sh          # Debug build to build/mudclarity
-./build.sh run      # Build and run
-./build.sh test     # Vet and run tests (see Testing)
+./build.sh run [args]   # Build and run (args go to mudclarity)
+./build.sh test     # Vet, cross-OS type-check, and run tests (see Testing)
 ./build.sh debug-tests [name]         # Test binaries for a debugger (see VS Code)
+./build.sh help     # The build commands
 ./build/mudclarity                    # Open the GUI
 ./build/mudclarity open path/to/area.lst   # Open the GUI on a world
 ./build/mudclarity path/to/area.lst   # CLI: validate the whole world
@@ -510,21 +519,46 @@ odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,f
 
 `-strict-style` applies to every package compiled, Skald included, so tests
 of packages that import Skald (`app`, `components`) use `-vet-style` with
-`-vet-packages` instead (see `style_flags` in `build.sh`).
+`-vet-packages` instead (see `style_flags` in `tools/build/build.odin`).
+
+`test` also type-checks the program for macOS (arm64, amd64) and Linux
+(amd64, arm64) whatever the host, so platform-specific mistakes show up on
+any machine. `odin check` can only target Windows from Windows (it needs the
+Windows SDK), so Windows is covered when `test` runs there.
+
+### Cross-platform rules
+
+- Paths go through `core:path/filepath` (`join`, `dir`, `base`, `ext`);
+  never build them with `/` or `\`. Odin accepts `/` in its own flags.
+- File extensions are compared ignoring case (`workspace.is_area_list`,
+  `workspace.is_area_file`): `AREA.LST` is common on Windows.
+- Executables get `.exe` on Windows (`EXE` in the build tool; `windows`
+  overrides in `.vscode/launch.json`).
+- No shell-specific logic outside `build.sh`/`build.bat`, which stay thin.
+  VS Code tasks pass `args` arrays so each OS's shell quotes them.
+- Line endings are pinned in `.gitattributes`: sources LF, `.bat` CRLF, and
+  area files (`test_data/`, `*.are`, `*.lst`) are never converted, since
+  their bytes and hashes are part of the tests.
+- Text from files is bytes, never assumed UTF-8 (see `display_text`).
 
 ### Dependencies
 
 - **Odin**: `dev-2026-10` or newer (Odin's API still changes, so report
   breakage on newer releases rather than pinning an old one)
 - **Skald**: git submodule at `vendor/skald` (`git submodule update --init`)
-- **SDL3**: required at runtime by Skald (see `vendor/skald/PLATFORMS.md`)
-- **Odin's STB libraries** (Linux, once per Odin install): Skald's image
-  support imports `vendor:stb/image`, which Odin ships as source. Build it
-  with `$ODIN_ROOT/vendor/stb/src/build_stb.sh` (needs write access to the
-  Odin install, so often `sudo`). Skald's docs say this is only needed for
-  the fontstash backend and suggest `make`; both are out of date.
-- **Vulkan**: on macOS, the LunarG Vulkan SDK (provides MoltenVK); source its
-  `setup-env.sh` before running
+- **SDL3** and **Vulkan** at runtime (details: `vendor/skald/PLATFORMS.md`):
+  - **Windows**: Visual Studio Build Tools (MSVC + Windows SDK); build from a
+    Developer Command Prompt or PowerShell so the linker is found.
+    `SDL3.dll` ships with Odin (`vendor\sdl3`) and the build tool copies it
+    into `build\`. The Vulkan loader comes with GPU drivers.
+  - **macOS**: the LunarG Vulkan SDK (provides MoltenVK); source its
+    `setup-env.sh` before running. Odin's SDL3 and STB come prebuilt.
+  - **Linux**: SDL3 (e.g. `sdl3` / `libsdl3-dev`) and a Vulkan loader and
+    driver from the distro. Odin's STB libraries must be built once per
+    Odin install: `$ODIN_ROOT/vendor/stb/src/build_stb.sh` (needs write
+    access to the Odin install, so often `sudo`). Skald's docs say this is
+    only needed for the fontstash backend and suggest `make`; both are out
+    of date: `vendor:stb/image` is always used.
 
 Build output goes to `build/` (gitignored).
 
@@ -532,7 +566,9 @@ Build output goes to `build/` (gitignored).
 
 Recommended extensions (`.vscode/extensions.json`): OLS (`danielgavin.ols`)
 for the language server and CodeLLDB (`vadimcn.vscode-lldb`) for debugging.
-Every task calls `build.sh`, so flags are only ever changed there.
+Every task calls `build.sh`, or `build.bat` on Windows, so flags are only
+ever changed in `tools/build`. Launch configurations use `.exe` paths on
+Windows; CodeLLDB works on all three OSes.
 
 - **Build** (Ctrl+Shift+B) is `./build.sh`; **Run Test Task** offers `test`
   (the default), `test (with corpus)` (uses `../riftshadow/area`) and
@@ -663,7 +699,8 @@ and reject entries containing path separators or `..`.
 
 ### Review Checklist
 
-- [ ] `./build.sh test` passes (vets our packages; tests use `-vet -strict-style`)
+- [ ] `./build.sh test` (or `build.bat test`) passes: vet, cross-OS checks, tests
+- [ ] Nothing OS-specific outside `tools/build` (see Cross-platform rules)
 - [ ] New or changed checks are calibrated against the corpus
 - [ ] Follows naming and style conventions
 - [ ] No ignored error returns
