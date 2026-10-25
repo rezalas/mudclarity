@@ -116,6 +116,27 @@ test_validation_is_deterministic :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_room_checks_name_rooms :: proc(t: ^testing.T) {
+	// The GUI marks rooms by the vnum of ROOM_CHECKS findings, so that vnum
+	// must be one of the area's rooms.
+	loaded, err := formats.load_area_bytes(MIDGAARD_ARE, "midgaard.are")
+	defer formats.unload_area(loaded)
+	if !testing.expect(t, err == nil) do return
+	rooms := make(map[int]bool, context.temp_allocator)
+	for room in loaded.area.rooms {
+		rooms[room.vnum] = true
+	}
+	seen: bit_set[Check]
+	for d in validate({&loaded.area}, true, context.temp_allocator) {
+		if d.check in ROOM_CHECKS {
+			seen += {d.check}
+			testing.expectf(t, d.vnum in rooms, "%v finding names #%d, which is not a room", d.check, d.vnum)
+		}
+	}
+	testing.expect(t, card(seen) >= 4, "midgaard should exercise several room checks")
+}
+
+@(test)
 test_validation_survives_damaged_areas :: proc(t: ^testing.T) {
 	// Validate every mutation of the fixtures that still parses. Damaged data
 	// (odd vnums, missing records) must never crash the validator.
