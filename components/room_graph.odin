@@ -215,25 +215,9 @@ handle_input :: proc(d: ^Room_Graph_Data, ctx: ^skald.Ctx(Room_Graph_Msg), id: s
 	if d.state.needs_fit {
 		skald.send(ctx, Room_Graph_Msg(Fitted{{last.w, last.h}}))
 	}
-	input := ctx.input
-	local := input.mouse_pos - {last.x, last.y}
-	is_over := skald.widget_hovered(ctx, id)
-	if is_over && input.mouse_pressed[.Left] {
-		if room, ok := room_at_point(d, local); ok {
-			skald.send(ctx, Room_Graph_Msg(Room_Clicked{room}))
-		} else {
-			skald.send(ctx, Room_Graph_Msg(Pan_Started{}))
-		}
+	press := Room_Graph_Msg(Pan_Started{})
+	if room, ok := room_at_point(d, canvas_local(ctx, last)); ok {
+		press = Room_Clicked{room}
 	}
-	if d.state.is_panning {
-		if input.mouse_buttons[.Left] && input.mouse_delta != {} {
-			skald.send(ctx, Room_Graph_Msg(Panned{input.mouse_delta}))
-		}
-		if input.mouse_released[.Left] {
-			skald.send(ctx, Room_Graph_Msg(Pan_Ended{}))
-		}
-	}
-	if is_over && input.scroll.y != 0 {
-		skald.send(ctx, Room_Graph_Msg(Zoomed{factor = 1 + input.scroll.y * 0.1, at = local}))
-	}
+	canvas_gestures(ctx, id, last, d.state.is_panning, press)
 }

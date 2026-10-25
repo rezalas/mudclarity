@@ -1,0 +1,44 @@
+/*
+ * Author: Paul McDowell
+ * Copyright: 2026
+ * License: MIT
+ */
+package components
+
+import "gui:skald"
+
+/*
+ Pointer gestures over a map canvas, shared by the room graph and the area
+ map: a press sends `on_press` (the caller's hit-test result, or
+ Pan_Started over empty space), dragging while panning sends Panned,
+ releasing sends Pan_Ended, and the wheel zooms at the pointer. `last` is
+ the canvas's rect from the previous frame; nothing is sent before it has
+ one. The message types are the room graph's (room_graph.odin).
+*/
+canvas_gestures :: proc(ctx: ^skald.Ctx($Msg), id: skald.Widget_ID, last: skald.Rect, is_panning: bool, on_press: Msg) {
+	if last.w <= 0 {
+		return
+	}
+	input := ctx.input
+	is_over := skald.widget_hovered(ctx, id)
+	if is_over && input.mouse_pressed[.Left] {
+		skald.send(ctx, on_press)
+	}
+	if is_panning {
+		if input.mouse_buttons[.Left] && input.mouse_delta != {} {
+			skald.send(ctx, Msg(Panned{input.mouse_delta}))
+		}
+		if input.mouse_released[.Left] {
+			skald.send(ctx, Msg(Pan_Ended{}))
+		}
+	}
+	if is_over && input.scroll.y != 0 {
+		local := input.mouse_pos - {last.x, last.y}
+		skald.send(ctx, Msg(Zoomed{factor = 1 + input.scroll.y * 0.1, at = local}))
+	}
+}
+
+// The pointer's position relative to a canvas whose rect is `last`.
+canvas_local :: proc(ctx: ^skald.Ctx($Msg), last: skald.Rect) -> [2]f32 {
+	return ctx.input.mouse_pos - {last.x, last.y}
+}

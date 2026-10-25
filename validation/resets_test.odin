@@ -7,6 +7,8 @@ package validation
 
 import "core:testing"
 
+import "../formats"
+
 // Rooms 100 and 101 joined both ways, mob 120, objects 150 (trash) and 151
 // (container), plus the given resets.
 @(private = "file")
@@ -184,4 +186,28 @@ test_vnum_out_of_range :: proc(t: ^testing.T) {
 @(test)
 test_bad_area_header :: proc(t: ^testing.T) {
 	expect_one(t, run_one(t, test_area("a", 199, 100, rooms(room(100, exit("NORTH", 101)), room(101, exit("SOUTH", 100))))), .Bad_Area_Header, .Warning, line = 1)
+}
+
+@(test)
+test_placed_portals :: proc(t: ^testing.T) {
+	// Object 500 is a portal to room 101, placed in room 100; 501 is a
+	// random portal (-1) and 502 leads nowhere: neither is listed.
+	text := test_area(
+		"A",
+		100,
+		199,
+		sections(
+			rooms(room(100), room(101)),
+			objects(object(500, "portal", "0 0 0 101 0"), object(501, "portal", "0 0 0 -1 0"), object(502, "portal", "0 0 0 199 0")),
+			resets("OBJ 500 TO 100", "OBJ 501 TO 100", "OBJ 502 TO 101"),
+		),
+	)
+	loaded, err := formats.load_area_bytes(transmute([]u8)text, "a.are")
+	defer formats.unload_area(loaded)
+	if !testing.expect(t, err == nil) do return
+	portals := placed_portals({&loaded.area}, context.temp_allocator)
+	if !testing.expect_value(t, len(portals), 1) do return
+	testing.expect_value(t, portals[0].from_room, 100)
+	testing.expect_value(t, portals[0].to_room, 101)
+	testing.expect_value(t, portals[0].object, 500)
 }
