@@ -45,8 +45,13 @@ Room_Graph_State :: struct {
 	camera:     Camera,
 	level:      int,
 	is_panning: bool,
-	needs_fit:  bool, // Fit the level to the canvas once its size is known
+	needs_fit:  bool,   // Fit the level to the canvas once its size is known
+	viewport:   [2]f32, // Canvas size at the last fit; zero until then
+	focus:      int,    // Room to centre on after the pending fit, or -1
 }
+
+// Zoom used when centring on a room, so its labels can be read.
+FOCUS_ZOOM :: f32(1)
 
 Room_Graph_Msg :: union {
 	Pan_Started,
@@ -56,6 +61,7 @@ Room_Graph_Msg :: union {
 	Fitted,
 	Level_Changed,
 	Room_Clicked,
+	Focus_Room,
 }
 
 Pan_Started :: struct {}
@@ -78,11 +84,16 @@ Level_Changed :: struct {
 Room_Clicked :: struct {
 	room: int,
 }
+// Centre on a room (switching to its level), e.g. after following an exit.
+// The host sends this; the graph never does.
+Focus_Room :: struct {
+	room: int,
+}
 
 // The state for showing an area afresh: level 0 (where placement starts),
 // fitted once the canvas has a size.
 room_graph_init :: proc() -> Room_Graph_State {
-	return Room_Graph_State{camera = Camera{zoom = 1}, needs_fit = true}
+	return Room_Graph_State{camera = Camera{zoom = 1}, needs_fit = true, focus = -1}
 }
 
 // Advance the graph's state. Room_Clicked leaves it unchanged; it is the
@@ -102,11 +113,37 @@ room_graph_update :: proc(s: Room_Graph_State, m: Room_Graph_Msg, l: ^layout.Lay
 		lo, hi := level_bounds(l, out.level)
 		out.camera = fit(lo, hi, v.size)
 		out.needs_fit = false
+		out.viewport = v.size
+		if out.focus >= 0 {
+			out = centre_on(out, l, out.focus)
+		}
 	case Level_Changed:
 		out.level = clamp(v.level, l.min.z, l.max.z)
 		out.needs_fit = true
 	case Room_Clicked:
+	case Focus_Room:
+		if v.room < 0 || v.room >= len(l.rooms) {
+			return out
+		}
+		if out.needs_fit || out.viewport == {} {
+			out.focus = v.room // Centre once the canvas has been fitted
+			out.level = l.rooms[v.room].cell.z
+			return out
+		}
+		out = centre_on(out, l, v.room)
 	}
+	return out
+}
+
+// Show `room`'s level with the room in the middle of the viewport.
+@(private = "file")
+centre_on :: proc(s: Room_Graph_State, l: ^layout.Layout, room: int) -> Room_Graph_State {
+	out := s
+	cell := l.rooms[room].cell
+	out.level = cell.z
+	out.camera.zoom = max(out.camera.zoom, FOCUS_ZOOM)
+	out.camera.pan = out.viewport / 2 - cell_center(cell) * out.camera.zoom
+	out.focus = -1
 	return out
 }
 

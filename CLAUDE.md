@@ -31,7 +31,8 @@ mudclarity/
 │   ├── msg.odin             # Msg union and Effect union
 │   ├── update.odin          # step (pure: State, Msg -> State, Effect) and update
 │   ├── effects.odin         # Effect -> skald.Command; dialog and drop handlers
-│   ├── world.odin           # World: workspace + per-area layouts, room marks, labels
+│   ├── world.odin           # World: workspace + layouts, marks, labels, room lookup, findings
+│   ├── inspector_data.odin  # Resolve the selected room's exits and findings for the inspector
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
 │   ├── welcome_view.odin    # Screens, one file each
@@ -43,6 +44,7 @@ mudclarity/
 │   ├── graph_camera.odin    # Cells <-> graph <-> screen; zoom at cursor; fit
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
+│   ├── room_inspector.odin  # Room inspector panel (generic over $Msg; see GUI structure)
 │   └── *_test.odin
 ├── layout/                  # package layout: room grid placement, no GUI code
 │   ├── layout.odin          # Layout, Cell, Edge; compute / destroy / room_at
@@ -459,6 +461,14 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   passed down to the components that show it.
 - Small shared widgets (severity badge, section header, key/value row, empty
   state) live in `components/common.odin` and are generic over `$Msg`.
+- **`map_msg` and deferred builders don't mix.** `map_msg` builds the
+  component's `Ctx` on its own stack, but `scroll` with a zero size (and
+  anything built through `sized`) is built later, during rendering, with a
+  pointer to that `Ctx`: it crashes. A component that scrolls or uses
+  `sized` is generic over the host's `$Msg` instead and takes callbacks for
+  its events (the room inspector's `on_follow`). The room graph can use
+  `map_msg` because its canvas keeps no `Ctx`.
+- A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
 - Components draw into whichever window they're given, so a panel can later
   move into its own window (dispatch on `ctx.window`).
 - `update` procs are pure (state and message in, state and command out) and
@@ -496,6 +506,19 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   area's rooms and edges with nothing precomputed per frame: anything that
   needs more than that (which rooms lead up/down, each room's worst
   finding) is computed once, in `layout` or `World`.
+
+### Room inspector
+
+- Left of the graph, 340 px wide, scrolling: vnum, name, area, sector and
+  flags; the description reflowed to the panel (files pre-wrap at 80
+  columns); exits with their targets (links; "look only" for vnum 0,
+  "missing" in red, "in <area>" for other areas, door state and key);
+  the room's findings with their review state; extra description keywords.
+- Clicking an exit's target selects that room, switching area if needed,
+  and the graph centres on it (`Focus_Room`, applied after the next fit if
+  the graph hasn't been fitted yet).
+- `app/inspector_data.odin` resolves everything from `World`
+  (`rooms_by_vnum`, `room_findings`), so the component only displays data.
 
 ### Room graph
 
@@ -663,6 +686,8 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   `testkit`. State is freed with `finish(s)` (a quit), so the tracking
   allocator catches leaked strings. Workspaces live on the plain heap by
   design, so a leaked workspace is *not* caught by the test runner.
+- `inspector_data` (exit targets, other areas, missing and look-only exits,
+  findings) and following exits within and across areas (`inspector_test`).
 - `room_graph_update`, `room_at_point`, `level_bounds` and the camera maths
   (`graph_camera_test`) are tested without drawing; `World`'s layouts and
   room marks (including accepted findings not marking) in `world_test`.

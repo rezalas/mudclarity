@@ -15,6 +15,7 @@ Msg :: union {
 	Close_World,
 	Area_Picked,
 	Graph,
+	Exit_Followed,
 	Dismiss_Error,
 	Theme_Changed,
 	Quit_Requested,
@@ -51,6 +52,11 @@ Area_Picked :: struct {
 // A message from the room graph component.
 Graph :: struct {
 	msg: components.Room_Graph_Msg,
+}
+
+// An exit's target was clicked in the inspector: show that room.
+Exit_Followed :: struct {
+	target: int, // Vnum
 }
 
 Dismiss_Error :: struct {}

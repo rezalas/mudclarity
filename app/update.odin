@@ -89,6 +89,9 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		out.graph = components.room_graph_update(out.graph, v.msg, &out.world.layouts[out.area])
 
+	case Exit_Followed:
+		follow_exit(&out, v.target)
+
 	case Dismiss_Error:
 		set_text(&out.error, "")
 
@@ -105,6 +108,23 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		return out, Quit{}
 	}
 	return out, nil
+}
+
+// Select the room with vnum `target`, switching area if it is in another
+// one, and centre the graph on it. Unknown vnums are ignored.
+follow_exit :: proc(s: ^State, target: int) {
+	if s.world == nil {
+		return
+	}
+	ref, ok := s.world.rooms_by_vnum[target]
+	if !ok {
+		return
+	}
+	if ref.area != s.area {
+		show_area(s, ref.area)
+	}
+	s.selected_room = ref.room
+	s.graph = components.room_graph_update(s.graph, components.Focus_Room{ref.room}, &s.world.layouts[s.area])
 }
 
 // What to open from a set of chosen or dropped paths: the first area.lst
