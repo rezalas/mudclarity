@@ -19,7 +19,7 @@ mkdir -p build
 # `skald/` folder. For a sibling git clone called `skald`, it's `../skald`.
 SKALD_ROOT="./vendor/skald"
 
-TEST_PACKAGES=(formats validation clarity workspace)
+TEST_PACKAGES=(formats validation clarity workspace cli)
 
 CORPUS_DEFINE=()
 if [[ -n "${RIFTSHADOW_AREA_DIR:-}" ]]; then
@@ -74,7 +74,7 @@ if [[ "${1:-}" == "test" ]]; then
         NAME_DEFINE=(-define:ODIN_TEST_NAMES="$2")
     else
         odin check . -collection:gui="${SKALD_ROOT}" -vet -vet-style \
-            -vet-packages:main,formats,models,validation,clarity,workspace
+            -vet-packages:main,formats,models,validation,clarity,workspace,cli
     fi
 
     for package in "${packages[@]}"; do
