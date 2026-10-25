@@ -1,0 +1,94 @@
+{
+    // Every task goes through build.sh, so flags live in one place.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "detail": "Debug build to build/mudclarity",
+            "type": "shell",
+            "command": "./build.sh",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": ["$odin"]
+        },
+        {
+            "label": "test",
+            "detail": "Vet our packages and run every package's tests",
+            "type": "shell",
+            "command": "./build.sh test",
+            "group": { "kind": "test", "isDefault": true },
+            "problemMatcher": ["$odin", {
+                // Odin's test runner names only the file: search the repo for it.
+                "owner": "odin-test",
+                "severity": "error",
+                "fileLocation": ["search", { "include": ["${workspaceFolder}"], "exclude": ["${workspaceFolder}/vendor", "${workspaceFolder}/build"] }],
+                "pattern": {
+                    "regexp": "^\\[ERROR\\] --- \\[[^\\]]+\\] \\[([^:\\]]+\\.odin):(\\d+):[^\\]]*\\] (.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                }
+            }]
+        },
+        {
+            "label": "test (with corpus)",
+            "detail": "Also parse, validate and review every area in ../riftshadow/area",
+            "type": "shell",
+            "command": "./build.sh test",
+            "options": { "env": { "RIFTSHADOW_AREA_DIR": "${workspaceFolder}/../riftshadow/area" } },
+            "group": "test",
+            "problemMatcher": ["$odin", {
+                // Odin's test runner names only the file: search the repo for it.
+                "owner": "odin-test",
+                "severity": "error",
+                "fileLocation": ["search", { "include": ["${workspaceFolder}"], "exclude": ["${workspaceFolder}/vendor", "${workspaceFolder}/build"] }],
+                "pattern": {
+                    "regexp": "^\\[ERROR\\] --- \\[[^\\]]+\\] \\[([^:\\]]+\\.odin):(\\d+):[^\\]]*\\] (.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                }
+            }]
+        },
+        {
+            "label": "test (one)",
+            "detail": "Run a single test by name, e.g. formats.test_room_basic_fields",
+            "type": "shell",
+            "command": "./build.sh test '${input:testName}'",
+            "group": "test",
+            "problemMatcher": ["$odin", {
+                // Odin's test runner names only the file: search the repo for it.
+                "owner": "odin-test",
+                "severity": "error",
+                "fileLocation": ["search", { "include": ["${workspaceFolder}"], "exclude": ["${workspaceFolder}/vendor", "${workspaceFolder}/build"] }],
+                "pattern": {
+                    "regexp": "^\\[ERROR\\] --- \\[[^\\]]+\\] \\[([^:\\]]+\\.odin):(\\d+):[^\\]]*\\] (.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                }
+            }]
+        },
+        {
+            "label": "build tests (debug)",
+            "detail": "Every package's tests with debug info, to build/<package>_test_debug",
+            "type": "shell",
+            "command": "./build.sh debug-tests",
+            "problemMatcher": ["$odin"]
+        },
+        {
+            "label": "build test (debug, one)",
+            "detail": "One test with debug info, to build/single_test_debug",
+            "type": "shell",
+            "command": "./build.sh debug-tests '${input:testName}'",
+            "problemMatcher": ["$odin"]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testName",
+            "type": "promptString",
+            "description": "Test to run: <package>.<test name>",
+            "default": "formats.test_room_basic_fields"
+        }
+    ]
+}

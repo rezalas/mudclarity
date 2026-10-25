@@ -67,6 +67,8 @@ mudclarity/
 │   └── types.odin           # Shared types (Direction, Dice, ...)
 ├── test_data/               # Real and hand-made .are files for tests
 ├── vendor/skald/            # Skald GUI library (git submodule)
+├── .vscode/                 # Tasks, launch (debug) configs, recommended extensions
+├── ols.json                 # Odin language server: the `gui` collection
 └── CLAUDE.md                # This file
 ```
 
@@ -449,7 +451,7 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 ./build.sh          # Debug build to build/mudclarity
 ./build.sh run      # Build and run
 ./build.sh test     # Vet and run tests (see Testing)
-./build.sh debug-tests [name]         # Test binaries for a debugger
+./build.sh debug-tests [name]         # Test binaries for a debugger (see VS Code)
 ./build/mudclarity path/to/area.lst   # Until the GUI exists: validate the whole world
 ./build/mudclarity file.are ...       # ...or just these files
 ./build/mudclarity                    # Usage, including the review commands below
@@ -476,6 +478,24 @@ odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,f
   `setup-env.sh` before running
 
 Build output goes to `build/` (gitignored).
+
+### VS Code
+
+Recommended extensions (`.vscode/extensions.json`): OLS (`danielgavin.ols`)
+for the language server and CodeLLDB (`vadimcn.vscode-lldb`) for debugging.
+Every task calls `build.sh`, so flags are only ever changed there.
+
+- **Build** (Ctrl+Shift+B) is `./build.sh`; **Run Test Task** offers `test`
+  (the default), `test (with corpus)` (uses `../riftshadow/area`) and
+  `test (one)`, which prompts for `<package>.<test>`. Compiler, vet and
+  test failures show up in the Problems panel.
+- **Run and Debug** configurations (F5 to debug, Ctrl+F5 to run without the
+  debugger): `mudclarity: check the world`, `mudclarity: custom arguments`
+  (prompts for a command line), `tests: debug a package` and
+  `tests: debug one test`.
+- Test binaries for debugging come from `./build.sh debug-tests`. They run
+  tests on one thread so breakpoints hit in order. `ODIN_TEST_NAMES` is a
+  compile-time setting, so debugging one test rebuilds it on its own.
 
 ## Testing
 
