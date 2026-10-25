@@ -7,8 +7,6 @@ package clarity
 
 import "core:fmt"
 import "core:mem/virtual"
-import "core:os"
-import "core:path/filepath"
 import "core:testing"
 
 import "../formats"
@@ -18,15 +16,6 @@ import "../validation"
 // Shared helpers for the clarity tests.
 
 TEST_DATE :: "2026-10-23"
-
-// An area named `name` (vnums 100-199) with the given #ROOMS records.
-area_text :: proc(name, room_records: string) -> string {
-	return fmt.tprintf("#AREA\n%s~\n%s~\nTester~\n1 50\n100 199\nnormal\ntemperate\n0\n1\nNone~\n#ROOMS\n%s#0\n#$\n", name, name, room_records)
-}
-
-// Room 100 <-> 101, a broken exit 100 -> 150, and an isolated room 102.
-// Findings: Broken_Exit (100, 150), Orphan_Room (102), Dead_End_Room (102).
-BASE_ROOMS :: "#100\nA~\n~\ncity\nD NORTH 101 0 0\n~\n~\nD EAST 150 0 0\n~\n~\nS\n#101\nB~\n~\ncity\nD SOUTH 100 0 0\n~\n~\nS\n#102\nC~\n~\ncity\nS\n"
 
 // A world of parsed areas plus their names and hashes, as the CLI builds it.
 Test_World :: struct {
@@ -95,12 +84,3 @@ test_arena :: proc(arena: ^virtual.Arena) -> virtual.Allocator_Error {
 	return virtual.arena_init_growing(arena)
 }
 
-// A fresh, empty temporary directory named `name` (tests run in parallel,
-// so each needs its own name).
-temp_dir :: proc(t: ^testing.T, name: string) -> string {
-	base, _ := os.temp_directory(context.temp_allocator)
-	dir, _ := filepath.join({base, name}, context.temp_allocator)
-	_ = os.remove_all(dir)
-	testing.expect(t, os.make_directory(dir) == nil)
-	return dir
-}
