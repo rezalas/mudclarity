@@ -50,7 +50,7 @@
             "id": "testPackage",
             "type": "pickString",
             "description": "Package whose tests to debug",
-            "options": ["formats", "validation", "clarity", "workspace"],
+            "options": ["formats", "validation", "clarity", "workspace", "cli", "layout"],
             "default": "formats"
         }
     ]
