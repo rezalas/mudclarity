@@ -1,0 +1,17 @@
+# Keep line endings the same on every OS, whatever core.autocrlf says.
+
+# Sources and scripts: Odin tests compare multi-line raw strings byte for
+# byte, and bash needs LF.
+*.odin text eol=lf
+*.sh   text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+
+# cmd.exe expects CRLF.
+*.bat  text eol=crlf
+
+# Area files are test fixtures read as raw bytes: some use CRLF or bare CR
+# on purpose, and their hashes are part of the tests. Never convert them.
+test_data/** -text
+*.are        -text
+*.lst        -text
