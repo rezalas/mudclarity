@@ -5,6 +5,7 @@
  */
 package validation
 
+import "core:mem/virtual"
 import "core:strconv"
 import "core:strings"
 
@@ -147,16 +148,8 @@ check_room_ref :: proc(v: ^Validator, a: int, reset: models.Reset, vnum: int) {
 // Portals send players to the room in value[3] (act_ente.c); -1 is random.
 @(private)
 record_portal :: proc(v: ^Validator, facts: ^Reset_Facts, a: int, reset: models.Reset) {
-	obj, ok := find_object(&v.world, reset.vnum)
-	if !ok {
-		return
-	}
-	entry, known := formats.lookup_item_type(obj.item_type)
-	if !known || entry.name != "portal" {
-		return
-	}
-	destination, has_destination := object_value_int(obj.values[3])
-	if !has_destination || destination == -1 {
+	destination, is_portal := portal_destination(&v.world, reset)
+	if !is_portal {
 		return
 	}
 	if _, _, found := find_room(&v.world, destination); !found {
@@ -165,6 +158,63 @@ record_portal :: proc(v: ^Validator, facts: ^Reset_Facts, a: int, reset: models.
 		return
 	}
 	append(&facts.portals, Portal{from_room = reset.room, to_room = destination, object = reset.vnum, area = a, line = reset.line})
+}
+
+// The room an OBJ reset's object leads to, if it is a portal with a fixed
+// destination (not -1, random). The destination may not exist.
+@(private)
+portal_destination :: proc(w: ^World, reset: models.Reset) -> (destination: int, ok: bool) {
+	obj := find_object(w, reset.vnum) or_return
+	entry, known := formats.lookup_item_type(obj.item_type)
+	if !known || entry.name != "portal" {
+		return 0, false
+	}
+	destination = object_value_int(obj.values[3]) or_return
+	return destination, destination != -1
+}
+
+// A portal an OBJ reset places: from the reset's room to an existing room.
+Placed_Portal :: struct {
+	area:      int, // Index of the area whose reset places it
+	from_room: int, // Vnum
+	to_room:   int, // Vnum
+	object:    int, // The portal object's vnum
+	line:      int, // The reset's line
+}
+
+// Every portal that resets place and that leads to a room in `areas`, in
+// area and reset order. Random portals (-1) and missing destinations are
+// left out (validate reports the latter). Allocated with `allocator`.
+placed_portals :: proc(areas: []^models.Area, allocator := context.allocator) -> []Placed_Portal {
+	scratch_arena: virtual.Arena
+	if virtual.arena_init_growing(&scratch_arena) != nil {
+		return nil
+	}
+	defer virtual.arena_destroy(&scratch_arena)
+	scratch := virtual.arena_allocator(&scratch_arena)
+	v := Validator {
+		out       = make([dynamic]Diagnostic, scratch), // Discarded: only the index is needed
+		allocator = scratch,
+		scratch   = scratch,
+	}
+	build_world(&v, areas, false)
+
+	out := make([dynamic]Placed_Portal, allocator)
+	for area, a in areas {
+		for reset in area.resets {
+			if reset.command != .Object || reset.room == 0 {
+				continue
+			}
+			destination, is_portal := portal_destination(&v.world, reset)
+			if !is_portal {
+				continue
+			}
+			if _, _, found := find_room(&v.world, destination); found {
+				append(&out, Placed_Portal{area = a, from_room = reset.room, to_room = destination, object = reset.vnum, line = reset.line})
+			}
+		}
+	}
+	return out[:]
 }
 
 // Portal values are read as flag tokens; a plain (optionally negative)
