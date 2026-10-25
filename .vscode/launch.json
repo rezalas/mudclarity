@@ -1,6 +1,7 @@
 {
-    // Debugging uses CodeLLDB (vadimcn.vscode-lldb). "Run Without Debugging"
-    // (Ctrl+F5) runs the same configurations without the debugger.
+    // Debugging uses CodeLLDB (vadimcn.vscode-lldb), on Windows, macOS and
+    // Linux; Windows builds get .exe paths. "Run Without Debugging" (Ctrl+F5)
+    // runs the same configurations without the debugger.
     "version": "0.2.0",
     "configurations": [
         {
@@ -8,6 +9,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build"
         },
@@ -16,6 +18,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
             "args": ["open", "${workspaceFolder}/../riftshadow/area/area.lst"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build"
@@ -25,6 +28,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
             "args": ["${workspaceFolder}/../riftshadow/area/area.lst"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build"
@@ -34,6 +38,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/mudclarity",
+            "windows": { "program": "${workspaceFolder}/build/mudclarity.exe" },
             // A string is split like a shell command line.
             "args": "${input:cliArgs}",
             "cwd": "${workspaceFolder}",
@@ -44,6 +49,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/${input:testPackage}_test_debug",
+            "windows": { "program": "${workspaceFolder}/build/${input:testPackage}_test_debug.exe" },
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build tests (debug)"
         },
@@ -52,6 +58,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/single_test_debug",
+            "windows": { "program": "${workspaceFolder}/build/single_test_debug.exe" },
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build test (debug, one)"
         }
