@@ -479,7 +479,7 @@ Build output goes to `build/` (gitignored).
 ## Testing
 
 ```bash
-./build.sh test                     # vet our packages, then test formats and validation
+./build.sh test                     # vet our packages, then run every package's tests
 RIFTSHADOW_AREA_DIR=../riftshadow/area \
     ./build.sh test                 # also parse and validate every area in area.lst
 
@@ -512,6 +512,14 @@ Every change needs tests.
 - Merge states, snapshot new/fixed, added/removed/changed files, and edits
   use small worlds from `world_make(...)`.
 - Corpus test saves and reloads a review of the whole world in a temp dir.
+
+**Workspace (`workspace/`)**
+
+- Worlds are written to a temp dir with `write_world(...)` and opened like
+  the CLI does. Each open and edit error kind is tested, including the
+  exact message; strings passed to edits must survive the caller freeing
+  theirs.
+- Corpus test opens the whole world through a workspace (< 2.5 s).
 
 **Validators (`validation/`)**
 
