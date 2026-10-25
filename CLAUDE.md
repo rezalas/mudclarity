@@ -21,8 +21,13 @@ the ROM format; see **Area File Format** below.
 
 ```text
 mudclarity/
-├── mudclarity.odin          # Main entry point (package main)
+├── mudclarity.odin          # Entry point (package main): GUI with no arguments, else the CLI
 ├── build.sh                 # Build script
+├── app/                     # (planned) package app: GUI root state, Msg routing, screens
+├── components/              # (planned) package components: reusable GUI components
+├── layout/                  # (planned) package layout: room grid placement, no GUI code
+├── cli/                     # (planned) package cli: command-line commands
+├── workspace/               # package workspace: a loaded world, its findings and review file
 ├── formats/                 # package formats: reading .are files
 │   ├── reader.odin          # Byte cursor porting fread_* (string/word/number/flags)
 │   ├── errors.odin          # Parse_Error / Parse_Failure
@@ -61,8 +66,21 @@ mudclarity/
 └── CLAUDE.md                # This file
 ```
 
-Dependency direction: `main` → `clarity` → `validation` → `formats` → `models`. Odin forbids cyclic
-package imports, so `models` must not import `formats`.
+Dependency direction:
+
+```text
+main ─┬─ cli ─────────────────┐
+      └─ app ─┬─ components ──┴─ workspace → clarity → validation → formats → models
+              └─ layout → models
+```
+
+Odin forbids cyclic package imports, so a package never imports one to its
+left (e.g. `models` must not import `formats`, `components` must not import
+`app`). `workspace` holds everything the CLI and the GUI share, so neither
+reimplements loading, review edits or saving. `layout` has no Skald import,
+so it is tested like any other package.
+
+`(planned)` packages don't exist yet; drop the marker when one lands.
 
 ## Area File Format
 
@@ -371,13 +389,55 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   and `55_node_graph`).
 - Skald uses an Elm architecture: `init` / `update` / `view` with a `Msg`
   union. Parse files off the UI thread with `cmd_thread`.
+- `mudclarity` with no arguments opens the GUI; `mudclarity open <area.lst>`
+  opens it on a world. Every other invocation is the CLI.
 - **Layout**: area files have no coordinates. Rooms are placed on a grid by
   walking exits from a start room. MUD geometry is often inconsistent (two
   rooms claim the same cell, or an exit "east" leads to a room that is not
   east), so the layout must detect collisions and fall back gracefully.
   `up`/`down` exits need a separate visual treatment (e.g. z-levels).
-- Planned panels: room graph (center), room inspector (left), validation log
-  (right), toolbar (open file/area list, zoom, search, filters).
+  Layout lives in `layout/`, is computed once per load (never per frame) and
+  is iterative, not recursive.
+- **Screens**: Welcome (open an `area.lst`, recent files, drop a file) and
+  World: toolbar (area picker, search, zoom, filters) over room inspector
+  (left), room graph (center) and findings log (right). Review actions
+  (accept, flag, reopen, note, issue) are dialogs.
+
+### GUI structure
+
+- **Components** (`components/`, one package) follow Skald's
+  `examples/11_composed`: each has its own `X_State`, `X_Msg`, `x_update` and
+  `x_view`, and `app` embeds it with `skald.map_msg`. Components never
+  import or call each other.
+- **Events go up, data comes down.** A component reports what happened
+  (`Finding_Chosen{...}`) instead of changing other components; `app`'s
+  `update` decides what follows (select the room, center the graph, show it
+  in the inspector). Shared state such as the selection lives in `app` and is
+  passed down to the components that show it.
+- Small shared widgets (severity badge, section header, key/value row, empty
+  state) live in `components/common.odin` and are generic over `$Msg`.
+- Components draw into whichever window they're given, so a panel can later
+  move into its own window (dispatch on `ctx.window`).
+- `update` procs are pure (state and message in, state and command out) and
+  get unit tests; views get headless smoke tests where useful (see Skald's
+  `skald/table_hover_test.odin` for a GPU-less `Ctx`).
+- Keep files short: aim for under ~300 lines and one component per file;
+  split a component's painting from its interaction once it grows.
+
+### GUI safety
+
+- Loading and validation run in `cmd_thread` workers. Each load carries a
+  generation number so results from a superseded load are dropped. Workers
+  never assert or panic (that kills the process); errors come back as `Msg`
+  variants with heap-allocated text.
+- A loaded `workspace` owns all its memory and is freed at once on unload.
+  `Msg` strings live in the frame arena: clone them before keeping them.
+  Debug builds use the tracking allocator.
+- Area text is Latin-1 and untrusted; Skald draws UTF-8. Convert and strip
+  control characters through one display helper before drawing any file
+  text.
+- The room graph draws only what is on screen and hit-tests through a
+  spatial index, to keep 1000+ rooms smooth.
 
 ## Build & Development
 
@@ -402,6 +462,11 @@ odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,f
   breakage on newer releases rather than pinning an old one)
 - **Skald**: git submodule at `vendor/skald` (`git submodule update --init`)
 - **SDL3**: required at runtime by Skald (see `vendor/skald/PLATFORMS.md`)
+- **Odin's STB libraries** (Linux, once per Odin install): Skald's image
+  support imports `vendor:stb/image`, which Odin ships as source. Build it
+  with `$ODIN_ROOT/vendor/stb/src/build_stb.sh` (needs write access to the
+  Odin install, so often `sudo`). Skald's docs say this is only needed for
+  the fontstash backend and suggest `make`; both are out of date.
 - **Vulkan**: on macOS, the LunarG Vulkan SDK (provides MoltenVK); source its
   `setup-env.sh` before running
 
