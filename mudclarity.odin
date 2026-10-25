@@ -17,12 +17,11 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
-import "core:time"
 
 import "clarity"
 import "formats"
-import "models"
 import "validation"
+import "workspace"
 
 /*
  This is the main entry point for the Mud Clarity application.
@@ -45,17 +44,6 @@ Finding ids are printed at the end of each finding, e.g. {mtcim.are:Mismatched_R
 Exits with 1 if a file fails to parse or an unaccepted error is found.`
 
 COMMANDS :: [?]string{"check", "save", "accept", "flag", "reopen", "note", "issue"}
-
-// The loaded world: areas, their names in area.lst, and their hashes.
-World :: struct {
-	set:          formats.Area_Set,
-	areas:        []^models.Area,
-	names:        []string,
-	hashes:       []string,
-	is_complete:  bool,
-	clarity_path: string, // Empty when loose .are files were given
-	diagnostics:  []validation.Diagnostic,
-}
 
 main :: proc() {
 	arena: virtual.Arena
@@ -92,52 +80,49 @@ main :: proc() {
 	if !strings.has_suffix(args[0], ".lst") {
 		fail("%s needs an area.lst, not %s", command, args[0])
 	}
-	world := load_world(args[:1])
-	defer formats.unload_area_set(&world.set)
-	doc := load_or_new_document(&world)
+	ws := open_world(args[:1])
+	defer workspace.close(ws)
 	rest := args[1:]
+	today := workspace.today()
 
 	switch command {
 	case "save":
-		files := make([]clarity.File_Entry, len(world.set.loaded))
-		for loaded, i in world.set.loaded {
-			files[i] = clarity.file_entry_for(world.names[i], loaded)
-		}
-		clarity.refresh(&doc, files, world.diagnostics)
-		save(&world, &doc)
-		fmt.printfln("saved %s: %d files, %d findings", world.clarity_path, len(doc.files), len(doc.snapshot))
+		edit_or_fail(workspace.record_run(ws))
+		save_or_exit(ws)
+		fmt.printfln("saved %s: %d files, %d findings", ws.clarity_path, len(ws.document.files), len(ws.document.snapshot))
 	case "accept", "flag":
 		if len(rest) < 1 do fail("%s needs a finding id", command)
-		key := current_finding_key(&world, rest[0])
+		key, key_err := workspace.current_finding_key(ws, rest[0])
+		if failure, ok := key_err.(workspace.Edit_Failure); ok && failure.kind == .Unknown_Finding {
+			fail("%s; run check to see the ids", workspace.error_message(key_err))
+		}
+		edit_or_fail(key_err)
 		status := clarity.REVIEW_ACCEPTED if command == "accept" else clarity.REVIEW_FLAGGED
 		note := strings.join(rest[1:], " ")
-		clarity.set_review(&doc, key, status, note, hash_of(&world, key.file), today())
-		save(&world, &doc)
+		edit_or_fail(workspace.set_review(ws, key, status, note, today))
+		save_or_exit(ws)
 		fmt.printfln("%s %s", status, rest[0])
 	case "reopen":
 		if len(rest) < 1 do fail("reopen needs a finding id")
 		key, ok := clarity.parse_finding_id(rest[0])
-		if !ok || !clarity.remove_review(&doc, key) {
-			fail("no decision recorded for %s", rest[0])
-		}
-		save(&world, &doc)
+		if !ok do fail("no decision recorded for %s", rest[0])
+		edit_or_fail(workspace.remove_review(ws, key, rest[0]))
+		save_or_exit(ws)
 		fmt.printfln("reopened %s", rest[0])
 	case "note", "issue":
 		if len(rest) < 4 do fail("%s needs <file> <kind> <vnum> <text>", command)
 		file, kind := rest[0], rest[1]
-		kinds := clarity.KINDS
-		if !slice.contains(world.names, file) do fail("%s is not in %s", file, args[0])
-		if !slice.contains(kinds[:], kind) do fail("kind must be one of %v", kinds)
 		vnum, vnum_ok := strconv.parse_int(rest[2], 10)
 		if !vnum_ok do fail("%s is not a vnum", rest[2])
 		text := strings.join(rest[3:], " ")
 		if command == "note" {
-			clarity.add_note(&doc, file, kind, vnum, text, today())
-			save(&world, &doc)
+			edit_or_fail(workspace.add_note(ws, file, kind, vnum, text, today))
+			save_or_exit(ws)
 			fmt.printfln("added note to %s %s %d", file, kind, vnum)
 		} else {
-			id := clarity.add_issue(&doc, file, kind, vnum, text, today())
-			save(&world, &doc)
+			id, err := workspace.add_issue(ws, file, kind, vnum, text, today)
+			edit_or_fail(err)
+			save_or_exit(ws)
 			fmt.printfln("added issue #%d", id)
 		}
 	}
@@ -148,87 +133,38 @@ fail :: proc(format: string, args: ..any) -> ! {
 	os.exit(2)
 }
 
-today :: proc() -> string {
-	year, month, day := time.date(time.now())
-	return fmt.aprintf("%04d-%02d-%02d", year, int(month), day)
+// Exit with a usage error if an edit was refused.
+edit_or_fail :: proc(err: workspace.Error) {
+	if err != nil {
+		fail("%s", workspace.error_message(err))
+	}
 }
 
-// Load an area list (the whole world) or loose area files, and validate them.
-load_world :: proc(paths: []string) -> (world: World) {
-	if len(paths) == 1 && strings.has_suffix(paths[0], ".lst") {
-		list_err: formats.Parse_Error
-		world.set, list_err = formats.load_area_set(paths[0])
-		if list_err != nil {
-			fmt.eprintln(formats.parse_error_to_string(list_err, paths[0]))
-			os.exit(1)
-		}
-		world.is_complete = len(world.set.failures) == 0
-		world.clarity_path, _ = filepath.join({filepath.dir(paths[0]), "area.clarity"})
-	} else {
-		world.set.loaded = make([dynamic]^formats.Loaded_Area)
-		world.set.failures = make([dynamic]formats.Area_Load_Failure)
-		for path in paths {
-			loaded, err := formats.load_area_file(path)
-			if err != nil {
-				append(&world.set.failures, formats.Area_Load_Failure{name = path, error = err})
-				continue
-			}
-			append(&world.set.loaded, loaded)
-		}
+save_or_exit :: proc(ws: ^workspace.Workspace) {
+	if err := workspace.save(ws); err != nil {
+		fmt.eprintln(workspace.error_message(err))
+		os.exit(1)
 	}
-	for failure in world.set.failures {
+}
+
+// Open an area list (the whole world) or loose area files, and report the
+// files that failed to parse.
+open_world :: proc(paths: []string) -> ^workspace.Workspace {
+	ws: ^workspace.Workspace
+	err: workspace.Error
+	if len(paths) == 1 && strings.has_suffix(paths[0], ".lst") {
+		ws, err = workspace.open_area_list(paths[0])
+	} else {
+		ws, err = workspace.open_area_files(paths)
+	}
+	if err != nil {
+		fmt.eprintln(workspace.error_message(err))
+		os.exit(1)
+	}
+	for failure in ws.set.failures {
 		fmt.eprintln(formats.parse_error_to_string(failure.error, failure.name))
 	}
-	world.areas = formats.area_set_areas(&world.set)
-	world.names = make([]string, len(world.set.loaded))
-	world.hashes = make([]string, len(world.set.loaded))
-	for loaded, i in world.set.loaded {
-		world.names[i] = loaded.area.source_name
-		world.hashes[i] = clarity.sha256_hex(loaded.data)
-	}
-	world.diagnostics = validation.validate(world.areas, world.is_complete)
-	return world
-}
-
-load_or_new_document :: proc(world: ^World) -> clarity.Document {
-	if world.clarity_path == "" || !os.exists(world.clarity_path) {
-		return clarity.document_make("area.lst")
-	}
-	doc, err := clarity.load_document(world.clarity_path)
-	if err != nil {
-		fmt.eprintfln("%s: %s", world.clarity_path, err.(clarity.Load_Failure).detail)
-		os.exit(1)
-	}
-	return doc
-}
-
-save :: proc(world: ^World, doc: ^clarity.Document) {
-	if err := clarity.save_document(world.clarity_path, doc); err != nil {
-		fmt.eprintfln("%s: %s", world.clarity_path, err.(clarity.Load_Failure).detail)
-		os.exit(1)
-	}
-}
-
-hash_of :: proc(world: ^World, file: string) -> string {
-	for name, i in world.names {
-		if name == file {
-			return world.hashes[i]
-		}
-	}
-	return ""
-}
-
-// Parse a finding id and make sure it names a current finding, so typos
-// don't create reviews that never match anything.
-current_finding_key :: proc(world: ^World, id: string) -> clarity.Finding_Key {
-	key, ok := clarity.parse_finding_id(id)
-	if !ok do fail("%s is not a finding id (file:check:vnum:related_vnum)", id)
-	for d in world.diagnostics {
-		if clarity.key_of(d, world.names) == key {
-			return key
-		}
-	}
-	fail("no current finding has id %s; run check to see the ids", id)
+	return ws
 }
 
 SEVERITY_NAMES := [validation.Severity]string {
@@ -246,12 +182,11 @@ STATE_TAGS := [clarity.State]string {
 
 // Validate and print findings. Returns the exit code.
 run_check :: proc(paths: []string, show_all: bool) -> int {
-	world := load_world(paths)
-	defer formats.unload_area_set(&world.set)
-	doc := load_or_new_document(&world)
-	result := clarity.merge(&doc, world.names, world.hashes, world.diagnostics)
+	ws := open_world(paths)
+	defer workspace.close(ws)
+	result := workspace.merge(ws)
 
-	failing := len(world.set.failures) > 0
+	failing := len(ws.set.failures) > 0
 	for f in result.findings {
 		d := f.diagnostic
 		if d.severity == .Error && f.state != .Accepted {
@@ -264,7 +199,7 @@ run_check :: proc(paths: []string, show_all: bool) -> int {
 		new_tag := " (new)" if f.is_new else ""
 		fmt.printfln(
 			"%s:%d: %s %v%s: %s%s%s {{%s}}",
-			world.names[d.area],
+			ws.names[d.area],
 			d.line,
 			SEVERITY_NAMES[d.severity],
 			d.check,
@@ -275,20 +210,21 @@ run_check :: proc(paths: []string, show_all: bool) -> int {
 			clarity.finding_id(f.key),
 		)
 	}
-	print_summary(&world, &doc, result)
+	print_summary(ws, result)
 	return 1 if failing else 0
 }
 
-print_summary :: proc(world: ^World, doc: ^clarity.Document, result: clarity.Review_Result) {
+print_summary :: proc(ws: ^workspace.Workspace, result: clarity.Review_Result) {
+	doc := &ws.document
 	rooms := 0
-	for area in world.areas {
+	for area in ws.areas {
 		rooms += len(area.rooms)
 	}
-	severities := validation.count_by_severity(world.diagnostics)
-	fmt.printfln("\n%d areas, %d rooms: %d errors, %d warnings, %d info", len(world.areas), rooms, severities[.Error], severities[.Warning], severities[.Info])
+	severities := validation.count_by_severity(ws.diagnostics)
+	fmt.printfln("\n%d areas, %d rooms: %d errors, %d warnings, %d info", len(ws.areas), rooms, severities[.Error], severities[.Warning], severities[.Info])
 
 	by_check: [validation.Check][validation.Severity]int
-	for d in world.diagnostics {
+	for d in ws.diagnostics {
 		by_check[d.check][d.severity] += 1
 	}
 	for counts, check in by_check {
@@ -306,12 +242,12 @@ print_summary :: proc(world: ^World, doc: ^clarity.Document, result: clarity.Rev
 		fmt.printfln("  %-24v %s  (%s)", check, total_text, strings.join(parts[:], ", "))
 	}
 
-	if world.clarity_path == "" {
+	if ws.clarity_path == "" {
 		return
 	}
 	fmt.printfln(
 		"\nreview (%s): %d open, %d flagged, %d accepted%s, %d need review",
-		filepath.base(world.clarity_path),
+		filepath.base(ws.clarity_path),
 		result.state_counts[.Open],
 		result.state_counts[.Flagged],
 		result.state_counts[.Accepted],
