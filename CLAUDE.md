@@ -66,14 +66,16 @@ package imports, so `models` must not import `formats`.
 
 ## Area File Format
 
-The source of truth is the Riftshadow loader, not the sample files:
+The source of truth is the Riftshadow loader, not the sample files. Paths
+below assume Riftshadow is checked out next to this repository, at
+`../riftshadow`:
 
-- Section dispatch: `riftshadow/code/bootup.c` (around line 247)
-- Section loaders: `riftshadow/code/db.c` (`load_area`, `load_rooms`,
-  `load_newresets`, ...) and `riftshadow/code/db2.c` (`load_specs`, ...)
-- Flag and direction names: `riftshadow/code/tables.c`
+- Section dispatch: `../riftshadow/code/bootup.c` (around line 247)
+- Section loaders: `../riftshadow/code/db.c` (`load_area`, `load_rooms`,
+  `load_newresets`, ...) and `../riftshadow/code/db2.c` (`load_specs`, ...)
+- Flag and direction names: `../riftshadow/code/tables.c`
 
-Area files live in `/Users/paulmcdowell/Documents/source/paul/riftshadow/area/`.
+Area files live in `../riftshadow/area/`.
 The files the game loads are listed in `area.lst` (terminated by `$`). Note:
 
 - `area.lst` uses bare-CR line endings; some area files use CRLF.
@@ -391,12 +393,13 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
 # Type-check only. Vet only our packages: vendor/skald does not pass -vet.
-odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity
 ```
 
 ### Dependencies
 
-- **Odin**: `dev-2026-06` (pin upgrades deliberately; Odin's API still changes)
+- **Odin**: `dev-2026-10` or newer (Odin's API still changes, so report
+  breakage on newer releases rather than pinning an old one)
 - **Skald**: git submodule at `vendor/skald` (`git submodule update --init`)
 - **SDL3**: required at runtime by Skald (see `vendor/skald/PLATFORMS.md`)
 - **Vulkan**: on macOS, the LunarG Vulkan SDK (provides MoltenVK); source its
@@ -408,7 +411,7 @@ Build output goes to `build/` (gitignored).
 
 ```bash
 ./build.sh test                     # vet our packages, then test formats and validation
-RIFTSHADOW_AREA_DIR=/Users/paulmcdowell/Documents/source/paul/riftshadow/area \
+RIFTSHADOW_AREA_DIR=../riftshadow/area \
     ./build.sh test                 # also parse and validate every area in area.lst
 
 # Run selected tests
@@ -517,7 +520,7 @@ any default attribution guidance.
 
 ## Resources
 
-- Riftshadow source: `/Users/paulmcdowell/Documents/source/paul/riftshadow/code/`
+- Riftshadow source: `../riftshadow/code/`
 - Odin docs: <https://odin-lang.org/docs/>
 - Skald: `vendor/skald/README.md`, `vendor/skald/docs/`,
   `vendor/skald/examples/`
