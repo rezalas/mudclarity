@@ -62,13 +62,17 @@ zoom_at :: proc(camera: Camera, factor: f32, at: [2]f32) -> Camera {
 // A camera that shows cells `lo`..`hi` centred in a viewport of `size`
 // screen pixels, never zoomed in past 1.
 fit :: proc(lo, hi: layout.Cell, size: [2]f32) -> Camera {
-	graph_lo := cell_center(lo) - ROOM_SIZE / 2
-	graph_hi := cell_center(hi) + ROOM_SIZE / 2
-	extent := graph_hi - graph_lo
+	return fit_bounds(cell_center(lo) - ROOM_SIZE / 2, cell_center(hi) + ROOM_SIZE / 2, size)
+}
+
+// A camera that shows the graph-space rectangle `lo`..`hi` centred in a
+// viewport of `size` screen pixels, never zoomed in past 1.
+fit_bounds :: proc(lo, hi: [2]f32, size: [2]f32) -> Camera {
+	extent := [2]f32{max(hi.x - lo.x, 1), max(hi.y - lo.y, 1)}
 	room := size - 2 * FIT_MARGIN
 	zoom := min(f32(1), room.x / extent.x, room.y / extent.y)
 	zoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM)
-	centre := (graph_lo + graph_hi) / 2
+	centre := (lo + hi) / 2
 	return Camera{pan = size / 2 - centre * zoom, zoom = zoom}
 }
 
