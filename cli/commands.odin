@@ -94,6 +94,7 @@ usage :: proc() -> string {
 	b: strings.Builder
 	strings.builder_init(&b, context.temp_allocator)
 	strings.write_string(&b, "usage:\n")
+	strings.write_string(&b, "  mudclarity\n      Open the window. `mudclarity open <area.lst | file.are...>` opens it on a world.\n")
 	for command, i in COMMANDS {
 		name := "[check]" if i == 0 else command.name
 		fmt.sbprintfln(&b, "  mudclarity %s %s", name, command.arguments)

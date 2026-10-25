@@ -63,3 +63,14 @@ test_find_command :: proc(t: ^testing.T) {
 	testing.expect(t, find_command("issue") != nil)
 	testing.expect(t, find_command("area.lst") == nil)
 }
+
+@(test)
+test_help :: proc(t: ^testing.T) {
+	for flag in ([]string{"help", "--help", "-h"}) {
+		r := run_cli(flag)
+		testing.expect_value(t, r.code, EXIT_OK)
+		testing.expect_value(t, r.err, "")
+		expect_contains(t, r.out, "usage:")
+		expect_contains(t, r.out, "mudclarity open <area.lst | file.are...>")
+	}
+}

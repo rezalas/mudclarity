@@ -53,6 +53,10 @@ Call :: struct {
 // A first argument that isn't a command name means `check`.
 run :: proc(args: []string, output: Output) -> int {
 	args := args
+	if len(args) == 1 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
+		fmt.wprintln(output.out, usage())
+		return EXIT_OK
+	}
 	command := &COMMANDS[0]
 	if len(args) > 0 {
 		if found := find_command(args[0]); found != nil {

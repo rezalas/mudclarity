@@ -4,6 +4,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "mudclarity: GUI",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/mudclarity",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "mudclarity: GUI on the world",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/mudclarity",
+            "args": ["open", "${workspaceFolder}/../riftshadow/area/area.lst"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build"
+        },
+        {
             "name": "mudclarity: check the world",
             "type": "lldb",
             "request": "launch",
@@ -50,7 +67,7 @@
             "id": "testPackage",
             "type": "pickString",
             "description": "Package whose tests to debug",
-            "options": ["formats", "validation", "clarity", "workspace", "cli", "layout"],
+            "options": ["formats", "validation", "clarity", "workspace", "cli", "layout", "components", "app"],
             "default": "formats"
         }
     ]
