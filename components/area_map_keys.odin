@@ -20,6 +20,7 @@ AREA_MAP_KEYS := [?]Key_Hint {
 	{"Shift+arrows", "Move the view"},
 	{"+, -", "Zoom in or out"},
 	{"0", "Fit the map to the view"},
+	{"L", "Show or hide the legend"},
 }
 
 @(private)
@@ -46,6 +47,9 @@ area_map_keys :: proc(d: ^Area_Map_Data, ctx: ^skald.Ctx(Area_Map_Msg), last: sk
 		}
 		if .Enter in keys {
 			skald.send(ctx, Area_Map_Msg(Area_Opened{d.current}))
+		}
+		if LEGEND_KEY in keys {
+			skald.send(ctx, Area_Map_Msg(Legend_Toggled{}))
 		}
 	}
 	canvas_keys(ctx, last)

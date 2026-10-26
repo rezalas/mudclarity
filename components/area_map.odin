@@ -45,6 +45,7 @@ Area_Map_State :: struct {
 	camera:     Camera,
 	is_panning: bool,
 	needs_fit:  bool,
+	is_legend_open: bool,
 }
 
 Area_Map_Msg :: union {
@@ -55,6 +56,7 @@ Area_Map_Msg :: union {
 	Fitted,
 	Area_Clicked,
 	Area_Opened,
+	Legend_Toggled,
 }
 
 // An area was clicked: for the host to select.
@@ -93,6 +95,8 @@ area_map_update :: proc(s: Area_Map_State, m: Area_Map_Msg, positions: [][2]f32,
 		lo, hi := map_bounds(positions, rooms)
 		out.camera = fit_bounds(lo, hi, v.size)
 		out.needs_fit = false
+	case Legend_Toggled:
+		out.is_legend_open = !out.is_legend_open
 	case Area_Clicked, Area_Opened:
 	}
 	return out
@@ -154,14 +158,20 @@ area_map_view :: proc(d: Area_Map_Data, ctx: ^skald.Ctx(Area_Map_Msg)) -> skald.
 		canvas_gestures(ctx, id, last, d.state.is_panning, press)
 	}
 	cursor := skald.Cursor_Shape.Move if d.state.is_panning else .Default
+	legend := skald.spacer(0)
+	if d.state.is_legend_open && last.w > 0 {
+		legend = legend_view(ctx, AREA_MAP_LEGEND[:], last)
+	}
 	return skald.col(
 		skald.row(
 			zoom_buttons(ctx, last, d.state.camera.zoom),
+			legend_button(ctx, d.state.is_legend_open),
 			hint(ctx, "Each circle is an area; lines are exits and portals between areas. Click an area to see it, double-click to open its rooms."),
 			spacing = th.spacing.sm,
 			cross_align = .Center,
 		),
 		skald.flex(1, skald.canvas(ctx, data, paint_area_map, id = id, cursor = cursor)),
+		legend,
 		spacing = th.spacing.sm,
 		cross_align = .Stretch,
 	)

@@ -52,6 +52,7 @@ Room_Graph_State :: struct {
 	viewport:   [2]f32, // Canvas size at the last fit; zero until then
 	focus:      int,    // Room to centre on after the pending fit, or -1
 	pan_distance: f32,  // How far the current press has panned; under CLICK_SLOP it was a click
+	is_legend_open: bool,
 }
 
 // Zoom used when centring on a room, so its labels can be read.
@@ -68,6 +69,7 @@ Room_Graph_Msg :: union {
 	Focus_Room,
 	Exit_Key,
 	Room_Deselected,
+	Legend_Toggled,
 }
 
 Pan_Started :: struct {}
@@ -137,6 +139,8 @@ room_graph_update :: proc(s: Room_Graph_State, m: Room_Graph_Msg, l: ^layout.Lay
 	case Level_Changed:
 		out.level = clamp(v.level, l.min.z, l.max.z)
 		out.needs_fit = true
+	case Legend_Toggled:
+		out.is_legend_open = !out.is_legend_open
 	case Room_Clicked, Exit_Key, Room_Deselected:
 	case Focus_Room:
 		if v.room < 0 || v.room >= len(l.rooms) {
@@ -219,12 +223,18 @@ room_graph_view :: proc(d: Room_Graph_Data, ctx: ^skald.Ctx(Room_Graph_Msg)) -> 
 		)
 	}
 	append(&controls, zoom_buttons(ctx, last, d.state.camera.zoom))
+	append(&controls, legend_button(ctx, d.state.is_legend_open))
 	append(&controls, hint(ctx, "Drag to pan, scroll to zoom, click a room to select it."))
 
 	cursor := skald.Cursor_Shape.Move if d.state.is_panning else .Default
+	legend := skald.spacer(0)
+	if d.state.is_legend_open && last.w > 0 {
+		legend = legend_view(ctx, ROOM_GRAPH_LEGEND[:], last)
+	}
 	return skald.col(
 		skald.row(..controls[:], spacing = th.spacing.sm, cross_align = .Center),
 		skald.flex(1, skald.canvas(ctx, data, paint_room_graph, id = id, cursor = cursor)),
+		legend,
 		spacing = th.spacing.sm,
 		cross_align = .Stretch,
 	)

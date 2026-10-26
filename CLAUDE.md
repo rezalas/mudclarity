@@ -59,6 +59,7 @@ mudclarity/
 │   ├── room_graph_keys.odin # The room graph's keys (arrows follow exits)
 │   ├── markers.odin         # Severity markers: cross, triangle, dot
 │   ├── map_style.odin       # Map colours, widths and shapes, shared by painters and legend
+│   ├── legend.odin          # The maps' legend: every mark, drawn by the maps' own painting
 │   ├── area_map.odin        # Area map: one circle per area, links between them
 │   ├── area_map_paint.odin  # Painting the area map
 │   ├── area_map_keys.odin   # The area map's keys (arrows pick the nearest area that way)
@@ -755,6 +756,25 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   canvases ignore presses under any open popover (`mouse_over_overlay` in
   `canvas_gestures`), so a click on a result (or a dropdown entry) never
   also lands on the map beneath.
+
+### Legend
+
+- Each map has a **Legend** button (and `L` while it has focus) that opens
+  a panel over the canvas's top left, listing every mark it draws:
+  rooms (plain, each severity, selected, displaced, up/down exits) and
+  exits (two-way, one-way, bent, leaving the area) on the room graph;
+  areas (plain, each severity, unopened, current) and links (exits,
+  portals only, one way) on the area map (`ROOM_GRAPH_LEGEND`,
+  `AREA_MAP_LEGEND`). Its open state is in each map's state.
+- **Each swatch is drawn by the maps' own painting** (`paint_room_box`,
+  `paint_area_circle`, the shapes and colour helpers in `map_style.odin`)
+  with the theme's colours, so it always matches the map, whatever the
+  palette, light/dark or text size. Change a mark in one place and both
+  follow; a new mark needs a swatch and a label (`legend_test` checks
+  every swatch is listed once and draws).
+- It publishes its rect (clicks on it don't reach the map), is built only
+  while open, and scrolls when taller than the canvas. Keys are left to
+  Help (F1), which the footer says.
 
 ### Area map
 
