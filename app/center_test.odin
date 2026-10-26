@@ -74,7 +74,7 @@ test_clicking_an_area_opens_it :: proc(t: ^testing.T) {
 
 	// The area already shown: back to its graph, selection kept.
 	s, _ = step(s, Center_Chosen{.Areas})
-	s, effect = step(s, Area_Map{components.Area_Clicked{0}})
+	s, effect = step(s, Area_Map{components.Area_Opened{0}})
 	testing.expect_value(t, s.center, Center_View.Rooms)
 	testing.expect_value(t, s.area, 0)
 	testing.expect_value(t, s.selected_room, 1)
@@ -82,7 +82,7 @@ test_clicking_an_area_opens_it :: proc(t: ^testing.T) {
 
 	// Another area: shown afresh.
 	s, _ = step(s, Center_Chosen{.Areas})
-	s, _ = step(s, Area_Map{components.Area_Clicked{1}})
+	s, _ = step(s, Area_Map{components.Area_Opened{1}})
 	testing.expect_value(t, s.center, Center_View.Rooms)
 	testing.expect_value(t, s.area, 1)
 	testing.expect_value(t, s.selected_room, -1)
@@ -90,7 +90,7 @@ test_clicking_an_area_opens_it :: proc(t: ^testing.T) {
 
 	// An area that doesn't exist changes nothing but the view.
 	s, _ = step(s, Center_Chosen{.Areas})
-	s, _ = step(s, Area_Map{components.Area_Clicked{7}})
+	s, _ = step(s, Area_Map{components.Area_Opened{7}})
 	testing.expect_value(t, s.area, 1)
 }
 

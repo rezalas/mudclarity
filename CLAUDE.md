@@ -564,8 +564,10 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   the area the room graph shows has an accent ring. Lines join areas that
   exits or placed portals connect: thicker for more, accent colour when
   portals are the only link, an arrowhead when they go one way only.
-- Clicking an area opens its room graph (afresh if it's another area);
-  following an exit in the inspector also goes back to the room graph.
+- Clicking an area selects it, as picking it does (the ring and picker
+  follow); double-clicking opens its room graph (afresh if it's another
+  area). Following an exit in the inspector also goes back to the room
+  graph.
   The map keeps its camera while hidden; a new world refits it.
 - `World.area_map` (`app/world_map.odin`) is built once per load; the view
   only fills in the camera and the current area. Positions come from

@@ -103,9 +103,17 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		if out.world == nil {
 			return out, nil
 		}
-		if click, is_click := v.msg.(components.Area_Clicked); is_click {
-			if click.area >= 0 && click.area < len(out.world.ws.areas) && click.area != out.area {
-				show_area(&out, click.area)
+		#partial switch e in v.msg {
+		case components.Area_Clicked:
+			// Selecting an area is picking it: the ring and the picker
+			// follow, and its rooms are ready behind the switch.
+			if e.area >= 0 && e.area < len(out.world.ws.areas) && e.area != out.area {
+				show_area(&out, e.area)
+			}
+			return out, nil
+		case components.Area_Opened:
+			if e.area >= 0 && e.area < len(out.world.ws.areas) && e.area != out.area {
+				show_area(&out, e.area)
 			}
 			out.center = .Rooms
 			return out, Redraw_Soon{}
