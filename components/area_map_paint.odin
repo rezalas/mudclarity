@@ -101,6 +101,9 @@ paint_node :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter, origin: [2]f32, a
 	if area == d.current {
 		ring(p, centre, r + 4 * camera.zoom, 2.5, c.primary)
 	}
+	if mark := d.marks[area]; mark.has_finding {
+		paint_area_marker(p.r, centre, r, mark.worst, severity_color(c, mark.worst))
+	}
 	if camera.zoom >= AREA_LABEL_ZOOM {
 		size := 11 * min(max(camera.zoom, 0.8), 1.5) * d.text_scale
 		name := d.names[area]

@@ -57,6 +57,7 @@ mudclarity/
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
 │   ├── room_graph_keys.odin # The room graph's keys (arrows follow exits)
+│   ├── markers.odin         # Severity markers: cross, triangle, dot
 │   ├── area_map.odin        # Area map: one circle per area, links between them
 │   ├── area_map_paint.odin  # Painting the area map
 │   ├── area_map_keys.odin   # The area map's keys (arrows pick the nearest area that way)
@@ -569,6 +570,11 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   auto-id may share with a visible widget: a click near the search box
   once chose a text size in the closed Settings dialog. Return
   `dialog(ctx, false, spacer(0), ...)` while closed (it restores focus).
+- **Severity never relies on colour alone**: every marked room and area
+  also gets a **marker** (`markers.odin`): a cross for an error, a
+  triangle for a warning, a dot for info, in the severity colour; in a
+  room box's top-left corner, inside an area's circle. Anything new that
+  shows a severity on a map draws it through `paint_severity_marker`.
 - **Colours that carry meaning** come from the theme: a severity's
   colour only through `components.severity_color` (danger, warning,
   muted text), the selection and accents from `primary`. Never hard-code

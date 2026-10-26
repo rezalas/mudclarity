@@ -83,6 +83,9 @@ paint_room :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]f32,
 		outline, width = c.primary, 3
 	}
 	skald.draw_rect_outline(p.r, box, width, outline, radius, true)
+	if mark := d.marks[room]; mark.has_finding {
+		paint_room_marker(p.r, box, zoom, mark.worst, severity_color(c, mark.worst))
+	}
 	if d.layout.rooms[room].is_displaced {
 		skald.draw_circle(p.r, {box.x + box.w - 6 * zoom, box.y + 6 * zoom}, 2.5 * zoom, c.fg_muted, true)
 	}
