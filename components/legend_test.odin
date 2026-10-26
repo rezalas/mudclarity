@@ -87,3 +87,25 @@ test_legend_toggles :: proc(t: ^testing.T) {
 	m = area_map_update(m, Legend_Toggled{}, nil, nil)
 	testing.expect(t, m.is_legend_open)
 }
+
+@(test)
+test_legend_docks_on_roomy_canvases :: proc(t: ^testing.T) {
+	sections := ROOM_GRAPH_LEGEND[:]
+	pad := f32(12)
+	need := legend_size(sections, 1, pad)
+	rows := 0
+	for s in sections {
+		rows += len(s.items)
+	}
+	testing.expect_value(t, need.x, LEGEND_WIDTH)
+	testing.expect_value(t, need.y, 2 * pad + LEGEND_FOOTER_HEIGHT + f32(len(sections)) * LEGEND_TITLE_HEIGHT + f32(rows) * LEGEND_ROW_HEIGHT)
+
+	roomy := [2]f32{need.x * LEGEND_DOCK_RATIO, need.y + 16}
+	testing.expect(t, legend_docks(sections, roomy, 1, pad))
+	testing.expect(t, !legend_docks(sections, roomy - {1, 0}, 1, pad), "too narrow: a popover")
+	testing.expect(t, !legend_docks(sections, roomy - {0, 1}, 1, pad), "too short: a popover")
+	testing.expect(t, !legend_docks(sections, {880, 560}, 1, pad), "a 1280x800 window's canvas")
+	// Larger text makes the legend larger, so the same canvas may no
+	// longer have room.
+	testing.expect(t, !legend_docks(sections, roomy, 1.5, pad))
+}

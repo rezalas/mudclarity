@@ -1038,7 +1038,8 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   checked to draw, to differ in shape, and to stay in their place; the
   legend (`legend_test`): every swatch listed once with a label, drawing
   inside its cell, colours equal to the painters' (and following a
-  palette change), small dots drawn round, and the toggle on both maps.
+  palette change), small dots drawn round, the toggle on both maps, and
+  docking (its size, roomy versus narrow, short or larger-text canvases).
   The headless renderer helpers are in `components/helpers_test.odin`.
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
   length limits, and every byte value producing valid UTF-8;
