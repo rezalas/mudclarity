@@ -20,7 +20,9 @@ canvas_gestures :: proc(ctx: ^skald.Ctx($Msg), id: skald.Widget_ID, last: skald.
 		return
 	}
 	input := ctx.input
-	is_over := skald.widget_hovered(ctx, id)
+	// Not under an open popover (a dropdown, search results): a click on
+	// it must not also reach the canvas.
+	is_over := skald.widget_hovered(ctx, id) && !skald.mouse_over_overlay(ctx)
 	if is_over && input.mouse_pressed[.Left] {
 		skald.send(ctx, on_press)
 	}
