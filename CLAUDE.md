@@ -495,7 +495,11 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   (`text_scale_draft`) and it is applied when the mouse is let go, since
   restyling mid-drag would move the slider under the pointer. Ctrl+= /
   Ctrl+- (Cmd on macOS) step it by 10% anywhere and Ctrl+0 resets it; a
-  change refits both canvases. `theme_for` builds the theme for the settings:
+  change refits both canvases. Colours: standard, or colour-blind
+  friendly (`colour_blind` in `theme_for`), which replaces the theme's
+  danger and warning colours so errors and warnings stay apart with
+  protanopia, deuteranopia and tritanopia (picked by simulation; see its
+  comment). Info and the selection are unchanged. `theme_for` builds the theme for the settings:
   the chosen or OS theme with the app's type sizes (`app_type`: small and
   body text a step above Skald's 13 and 14 px, since this app is mostly
   reading), then `scaled_theme` (fonts, spacing, radii),

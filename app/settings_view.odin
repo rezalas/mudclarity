@@ -39,6 +39,10 @@ TEXT_SCALE_KEY_STEP :: 10
 @(private = "file")
 TEXT_SCALE_MARKS := [?]int{75, 100, 125, 150, 175, 200}
 
+// Segment labels, in Palette_Choice order.
+@(private = "file")
+PALETTE_LABELS := [len(settings.Palette_Choice)]string{"Standard", "Colour-blind friendly"}
+
 // Segment labels, in Theme_Choice order.
 @(private = "file")
 THEME_LABELS := [len(settings.Theme_Choice)]string{"Follow the system", "Light", "Dark"}
@@ -62,6 +66,13 @@ settings_dialog :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 			skald.segmented(ctx, labels[:], int(s.settings.theme), theme_chosen),
 			cross_align = .Center,
 		),
+		skald.row(
+			skald.text("Colours", th.color.fg, th.font.size_md),
+			skald.flex(1, skald.spacer(0)),
+			skald.segmented(ctx, PALETTE_LABELS[:], int(s.settings.palette), palette_chosen),
+			cross_align = .Center,
+		),
+		components.caption(ctx, "Colour-blind friendly colours keep errors and warnings apart with red-green and blue-yellow colour blindness.", max_width = SETTINGS_DIALOG_WIDTH * components.ui_scale(th) - 2 * th.spacing.lg),
 		text_scale_control(s, ctx),
 		components.caption(ctx, TEXT_SIZE_HINT, max_width = SETTINGS_DIALOG_WIDTH * components.ui_scale(th) - 2 * th.spacing.lg),
 		skald.spacer(th.spacing.md),
@@ -156,6 +167,11 @@ next_text_scale :: proc(percent, steps: int) -> int {
 @(private = "file")
 text_scale_dragged :: proc(value: f32) -> Msg {
 	return Text_Scale_Dragged{int(value + 0.5)}
+}
+
+@(private = "file")
+palette_chosen :: proc(index: int) -> Msg {
+	return Palette_Chosen{settings.Palette_Choice(index)}
 }
 
 @(private = "file")

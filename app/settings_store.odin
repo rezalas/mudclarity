@@ -55,7 +55,8 @@ settings_store_close :: proc(store: ^Settings_Store) {
 }
 
 // The Skald theme the settings ask for: light, dark or the OS's, with the
-// app's type sizes (app_type), at the chosen text size.
+// app's type sizes (app_type) and the chosen palette, at the chosen text
+// size.
 theme_for :: proc(s: settings.Settings) -> skald.Theme {
 	base: skald.Theme
 	switch s.theme {
@@ -66,7 +67,37 @@ theme_for :: proc(s: settings.Settings) -> skald.Theme {
 	case .System:
 		base = skald.theme_system()
 	}
+	if s.palette == .Colour_Blind {
+		base = colour_blind(base)
+	}
 	return scaled_theme(app_type(base), f32(settings.clamp_text_scale(s.text_scale)) / 100)
+}
+
+// `base` with error and warning colours that stay apart with protanopia,
+// deuteranopia and tritanopia. Skald's red and amber run together for
+// deuteranopia, worst on the light theme (CIEDE2000 3.0 apart). These were
+// picked by simulating each (Machado et al. 2009, severity 1) and keeping
+// every pair of meaning colours (error, warning, info, selection) at least
+// ~15 apart, and each at 3.5:1 or more against the panels. The light pair
+// is told apart by lightness as well as hue. Info (muted text) and the
+// selection (primary) are unchanged: they already stay apart.
+colour_blind :: proc(base: skald.Theme) -> skald.Theme {
+	t := base
+	if is_light(t.color) {
+		t.color.danger = skald.rgb(0xee3d52)  // Bright red
+		t.color.warning = skald.rgb(0x7d5300) // Dark golden brown
+	} else {
+		t.color.danger = skald.rgb(0xff7043)  // Bright vermillion
+		t.color.warning = skald.rgb(0xfff176) // Light yellow
+	}
+	return t
+}
+
+// Whether a theme has a light background (the OS's choice can be either).
+@(private = "file")
+is_light :: proc(colors: skald.Theme_Colors) -> bool {
+	bg := colors.bg
+	return bg.r + bg.g + bg.b > 1.5
 }
 
 // The app's type sizes on `base`. Skald's small and body text (13 and 14

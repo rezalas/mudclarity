@@ -35,6 +35,7 @@ Msg :: union {
 	Dismiss_Warning,
 	Settings_Shown,
 	Theme_Chosen,
+	Palette_Chosen,
 	Text_Scale_Chosen,
 	Text_Scale_Dragged,
 	Settings_Saved,
@@ -147,6 +148,11 @@ Settings_Shown :: struct {
 // The Theme choice in the Settings dialog.
 Theme_Chosen :: struct {
 	theme: settings.Theme_Choice,
+}
+
+// The Colours choice in the Settings dialog.
+Palette_Chosen :: struct {
+	palette: settings.Palette_Choice,
 }
 
 // A text size to use, in percent: from the Settings dialog (a mark, the

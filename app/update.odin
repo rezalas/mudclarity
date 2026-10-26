@@ -191,6 +191,11 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		next.theme = v.theme
 		return change_settings(&out, next)
 
+	case Palette_Chosen:
+		next := out.settings
+		next.palette = v.palette
+		return change_settings(&out, next)
+
 	case Text_Scale_Chosen:
 		out.text_scale_draft = 0
 		next := out.settings
