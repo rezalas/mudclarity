@@ -540,6 +540,12 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- **Text size.** Fixed widths and heights (panels, popovers, dialogs,
+  the picker) are written at the default text size and multiplied by
+  `components.ui_scale(ctx.theme)` (body font size ÷ 14), which follows
+  the Text size setting through the theme; canvases get it as
+  `text_scale` in their data for labels. A new fixed size must do the
+  same, or it won't grow with the text.
 - Odin checks a generic proc's body only where it is instantiated, so a
   `$Msg` view's imports count as unused in the `components` test build.
   Do the work that needs other packages (`strings`, `filepath`, ...) in
@@ -619,7 +625,8 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   − and + zoom about the canvas centre (`zoom_buttons`, shared with the
   area map) and Fit refits. Labels appear only when zoomed in enough to
   read. The hint beside the buttons is cut short with "…" (`hint`), so a
-  narrow window never makes the canvas wider than it.
+  narrow window never makes the canvas wider than it. Labels follow the
+  text size; a vnum label shrinks to fit its box if needed.
 - A newly shown area fits itself once the canvas has a size. Skald redraws
   only on events, so a load returns `Redraw_Soon` to get that frame.
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has

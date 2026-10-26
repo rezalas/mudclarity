@@ -33,6 +33,7 @@ Room_Graph_Data :: struct {
 	marks:    []Room_Mark,
 	selected: int, // Room index, or -1
 	colors:   skald.Theme_Colors, // Set by room_graph_view for painting
+	text_scale: f32,              // Likewise: the theme's ui_scale, for labels
 }
 
 // A room's worst finding that isn't accepted, for colouring it.
@@ -183,6 +184,7 @@ room_graph_view :: proc(d: Room_Graph_Data, ctx: ^skald.Ctx(Room_Graph_Msg)) -> 
 	data := new(Room_Graph_Data, context.temp_allocator) // Read by paint after view returns
 	data^ = d
 	data.colors = th.color
+	data.text_scale = ui_scale(th)
 	handle_input(data, ctx, id, last)
 
 	controls := make([dynamic]skald.View, context.temp_allocator)

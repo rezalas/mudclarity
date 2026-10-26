@@ -98,7 +98,7 @@ paint_node :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter, origin: [2]f32, a
 		ring(p, centre, r + 4 * camera.zoom, 2.5, c.primary)
 	}
 	if camera.zoom >= AREA_LABEL_ZOOM {
-		size := 11 * min(max(camera.zoom, 0.8), 1.5)
+		size := 11 * min(max(camera.zoom, 0.8), 1.5) * d.text_scale
 		name := d.names[area]
 		w, _ := skald.measure_text(p.r, name, size)
 		label := c.fg_muted if d.is_unopened[area] else c.fg

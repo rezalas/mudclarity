@@ -12,7 +12,12 @@ import "gui:skald"
  the map, with section titles and text wrapped to its width.
 */
 
-INSPECTOR_WIDTH :: f32(340)
+INSPECTOR_WIDTH :: f32(340) // At the default text size; see inspector_width
+
+// The panel's width at the theme's text size.
+inspector_width :: proc(ctx: ^skald.Ctx($Msg)) -> f32 {
+	return INSPECTOR_WIDTH * ui_scale(ctx.theme)
+}
 
 @(private)
 section :: proc(ctx: ^skald.Ctx($Msg), title: string) -> skald.View {
@@ -27,8 +32,8 @@ panel :: proc(ctx: ^skald.Ctx($Msg), content: skald.View) -> skald.View {
 	// The scroll fills the panel's height only as a flex child (a zero
 	// size means "what my flex parent gives me").
 	return skald.col(
-		skald.flex(1, skald.scroll(ctx, {INSPECTOR_WIDTH - 2 * th.spacing.md, 0}, content)),
-		width = INSPECTOR_WIDTH,
+		skald.flex(1, skald.scroll(ctx, {inspector_width(ctx) - 2 * th.spacing.md, 0}, content)),
+		width = inspector_width(ctx),
 		padding = th.spacing.md,
 		bg = th.color.surface,
 		radius = th.radius.md,
@@ -38,5 +43,5 @@ panel :: proc(ctx: ^skald.Ctx($Msg), content: skald.View) -> skald.View {
 
 @(private)
 text_width :: proc(ctx: ^skald.Ctx($Msg)) -> f32 {
-	return INSPECTOR_WIDTH - 2 * ctx.theme.spacing.md - 12 // Room for the scrollbar
+	return inspector_width(ctx) - 2 * ctx.theme.spacing.md - 12 * ui_scale(ctx.theme) // Room for the scrollbar
 }

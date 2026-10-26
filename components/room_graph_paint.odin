@@ -82,14 +82,19 @@ paint_room :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]f32,
 	paint_level_markers(d, p, box, room)
 
 	if zoom >= VNUM_LABEL_ZOOM {
-		size := 11 * min(zoom, 1.5)
+		size := 11 * min(zoom, 1.5) * d.text_scale
 		label := fmt.tprintf("%d", d.area.rooms[room].vnum)
 		w, _ := skald.measure_text(p.r, label, size)
+		// Large text sizes would spill out of the box: shrink to fit.
+		if room_width := box.w - 4 * zoom; w > room_width && w > 0 {
+			size *= room_width / w
+			w = room_width
+		}
 		// draw_text takes the baseline, and `size` is the cap height.
 		skald.draw_text(p.r, label, centre.x - w / 2, centre.y + size / 2, c.fg, size)
 	}
 	if zoom >= NAME_LABEL_ZOOM {
-		size := 10 * min(zoom, 1.5)
+		size := 10 * min(zoom, 1.5) * d.text_scale
 		name := fit_label(p.r, display_text(d.area.rooms[room].name), size, CELL_SIZE * zoom - 4)
 		w, _ := skald.measure_text(p.r, name, size)
 		baseline := box.y + box.h + 2 * zoom + skald.text_ascent(p.r, size)
