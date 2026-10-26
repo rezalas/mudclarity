@@ -39,7 +39,7 @@ STATE_LABELS := [clarity.State]string {
 filters_control :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	th := ctx.theme
 	id := skald.hash_id(FILTERS_BUTTON_ID)
-	label := "Filters" if s.filters == DEFAULT_FILTERS else "Filters (changed)"
+	label := "Filters" if s.settings.filters == DEFAULT_FILTERS else "Filters (changed)"
 	button := skald.button(ctx, label, Msg(Filters_Shown{!s.filters_open}), id = id, bg = th.color.surface, fg = th.color.fg)
 	if !s.filters_open {
 		return button
@@ -57,16 +57,16 @@ filters_control :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	lines := make([dynamic]skald.View, context.temp_allocator)
 	append(&lines, line(skald.text("Severity", th.color.fg, th.font.size_md)))
 	for severity in validation.Severity {
-		box := skald.checkbox(ctx, severity in s.filters.severities, SEVERITY_LABELS[severity], severity, severity_shown)
+		box := skald.checkbox(ctx, severity in s.settings.filters.severities, SEVERITY_LABELS[severity], severity, severity_shown)
 		append(&lines, line(box))
 	}
 	append(&lines, line(skald.text("Review state", th.color.fg, th.font.size_md)))
 	for state in clarity.State {
-		box := skald.checkbox(ctx, state in s.filters.states, STATE_LABELS[state], state, state_shown)
+		box := skald.checkbox(ctx, state in s.settings.filters.states, STATE_LABELS[state], state, state_shown)
 		append(&lines, line(box))
 	}
 	buttons := skald.row(
-		skald.button(ctx, "Reset", Msg(Filters_Reset{}), bg = th.color.bg, fg = th.color.fg, disabled = s.filters == DEFAULT_FILTERS),
+		skald.button(ctx, "Reset", Msg(Filters_Reset{}), bg = th.color.bg, fg = th.color.fg, disabled = s.settings.filters == DEFAULT_FILTERS),
 		skald.button(ctx, "Done", Msg(Filters_Shown{false}), bg = th.color.primary, fg = th.color.on_primary),
 		spacing = th.spacing.sm,
 	)

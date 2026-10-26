@@ -26,7 +26,7 @@ area_inspector_data :: proc(s: State) -> components.Area_Inspector_Data {
 		can_add = ws.clarity_path != "",
 	}
 	for f in world.findings {
-		if f.diagnostic.area == s.area && shows(s.filters, f) {
+		if f.diagnostic.area == s.area && shows(s.settings.filters, f) {
 			d.shown[f.diagnostic.severity] += 1
 		}
 	}

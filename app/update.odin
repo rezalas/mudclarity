@@ -61,7 +61,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		world_close(out.world)
 		out.world = v.world
-		apply_filters(out.world, out.filters)
+		apply_filters(out.world, out.settings.filters)
 		set_search(&out, "")
 		out.screen = .World
 		out.center = .Rooms
@@ -137,25 +137,25 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		out.filters_open = v.is_open
 
 	case Severity_Shown:
-		f := out.filters
+		f := out.settings.filters
 		if v.is_shown {
 			f.severities += {v.severity}
 		} else {
 			f.severities -= {v.severity}
 		}
-		set_filters(&out, f)
+		return set_filters(&out, f)
 
 	case State_Shown:
-		f := out.filters
+		f := out.settings.filters
 		if v.is_shown {
 			f.states += {v.state}
 		} else {
 			f.states -= {v.state}
 		}
-		set_filters(&out, f)
+		return set_filters(&out, f)
 
 	case Filters_Reset:
-		set_filters(&out, DEFAULT_FILTERS)
+		return set_filters(&out, DEFAULT_FILTERS)
 
 	case Note_Draft_Changed:
 		set_text(&out.note_draft, v.text)
@@ -246,13 +246,16 @@ change_settings :: proc(s: ^State, next: settings.Settings) -> (State, Effect) {
 	return s^, Apply_Settings{s.store, next}
 }
 
-// Change the filters and re-mark the open world's rooms and areas.
+// Change the filters (a setting, so they are saved) and re-mark the open
+// world's rooms and areas.
 @(private = "file")
-set_filters :: proc(s: ^State, filters: Filters) {
-	s.filters = filters
-	if s.world != nil {
+set_filters :: proc(s: ^State, filters: Filters) -> (State, Effect) {
+	if s.world != nil && filters != s.settings.filters {
 		apply_filters(s.world, filters)
 	}
+	next := s.settings
+	next.filters = filters
+	return change_settings(s, next)
 }
 
 // Select a room on the room graph, switching area if it is in another

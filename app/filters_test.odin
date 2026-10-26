@@ -69,7 +69,7 @@ test_filters_mark_rooms_and_areas :: proc(t: ^testing.T) {
 	testing.expect_value(t, w.area_map.marks[0], NONE)
 
 	s, _ = step(s, Filters_Reset{})
-	testing.expect_value(t, s.filters, DEFAULT_FILTERS)
+	testing.expect_value(t, s.settings.filters, DEFAULT_FILTERS)
 	testing.expect_value(t, w.marks[0][0], mark(.Error))
 }
 
@@ -103,12 +103,12 @@ test_filters_show_accepted_findings_and_survive_a_reload :: proc(t: ^testing.T) 
 @(test)
 test_filters_popover_and_no_world :: proc(t: ^testing.T) {
 	s := init()
-	testing.expect_value(t, s.filters, DEFAULT_FILTERS)
+	testing.expect_value(t, s.settings.filters, DEFAULT_FILTERS)
 	s, _ = step(s, Filters_Shown{true})
 	testing.expect(t, s.filters_open)
 	// Changing filters with no world open just records them.
 	s, _ = step(s, Severity_Shown{.Info, false})
-	testing.expect_value(t, s.filters.severities, bit_set[validation.Severity]{.Error, .Warning})
+	testing.expect_value(t, s.settings.filters.severities, bit_set[validation.Severity]{.Error, .Warning})
 	s, _ = step(s, Filters_Shown{false})
 	testing.expect(t, !s.filters_open)
 	finish(s)

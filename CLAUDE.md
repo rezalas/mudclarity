@@ -632,10 +632,12 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   state; Reset goes back to `DEFAULT_FILTERS` (everything but accepted
   findings), and the button reads "Filters (changed)" otherwise. Escape,
   Done or a click elsewhere closes it.
-- `State.filters` is a plain `Filters` value (two bit sets) so settings
-  can keep it (#27). Changing it runs `apply_filters`, which re-marks the
-  open world's rooms and areas in place (a pass over the findings); a
-  newly loaded world is marked with the filters in use. The room graph,
+- The filters are a setting (`settings.Filters`, two bit sets; `app`
+  aliases it as `Filters`), kept in `State.settings.filters` and so
+  remembered between runs. Changing them runs `apply_filters`, which
+  re-marks the open world's rooms and areas in place (a pass over the
+  findings), and `change_settings`, which saves them; a newly loaded world
+  is marked with the filters in use. The room graph,
   the area map and the area inspector's counts all follow it; the room
   inspector still lists every finding of the room, with its state.
 
