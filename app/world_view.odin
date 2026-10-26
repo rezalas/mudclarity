@@ -35,6 +35,7 @@ world_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		append(&children, components.caption(ctx, "No areas loaded."))
 		return skald.col(..children[:], spacing = th.spacing.md, cross_align = .Stretch)
 	}
+	append(&children, toolbar(s, ctx))
 	inspector: skald.View
 	if s.center == .Areas {
 		events := components.Area_Inspector_Events(Msg) {
@@ -76,24 +77,30 @@ center_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	return skald.map_msg(ctx, graph, components.room_graph_view, wrap_graph)
 }
 
+// The world's name and folder, and Close. The folder is cut short with
+// "..." rather than pushing Close out of the window.
 @(private = "file")
 header :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	th := ctx.theme
 	ws := s.world.ws
 	title := filepath.base(ws.list_path) if ws.list_path != "" else fmt.tprintf("%d area files", len(ws.areas))
 	location := filepath.dir(ws.list_path) if ws.list_path != "" else ""
-	picker, switch_view := skald.spacer(0), skald.spacer(0)
-	if len(ws.areas) > 0 {
-		picker = skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, width = 360)
-		switch_view = skald.segmented(ctx, CENTER_LABELS[:], int(s.center), center_chosen)
-	}
 	return skald.row(
 		components.heading(ctx, title, is_large = true),
-		components.caption(ctx, location),
-		skald.flex(1, skald.spacer(0)),
-		switch_view,
-		picker,
+		skald.flex(1, skald.text(location, th.color.fg_muted, th.font.size_md, overflow = .Ellipsis)),
 		skald.button(ctx, "Close", Msg(Close_World{}), bg = th.color.surface, fg = th.color.fg),
+		spacing = th.spacing.md,
+		cross_align = .Center,
+	)
+}
+
+// What to show and where: the Rooms/Areas switch and the area picker.
+@(private = "file")
+toolbar :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
+	th := ctx.theme
+	return skald.row(
+		skald.segmented(ctx, CENTER_LABELS[:], int(s.center), center_chosen),
+		skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, width = 360),
 		spacing = th.spacing.md,
 		cross_align = .Center,
 	)

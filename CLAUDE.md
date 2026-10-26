@@ -453,10 +453,12 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   components are packed apart. On the corpus (~10k rooms, ~15 ms) about 1%
   of rooms are displaced. Exits to vnum 0 are look-only and never edges.
 - **Screens**: Welcome (open an `area.lst` or drop files; recent files are planned) and
-  World: toolbar (Rooms/Areas switch, area picker, search, zoom, filters)
-  over room inspector (left), room graph or area map (center) and findings
-  log (right). Review actions
-  (accept, flag, reopen, note, issue) are dialogs.
+  World: a header (the world's name, its folder cut short with "…" so
+  Close stays in the window, Close), summary counts, a toolbar
+  (Rooms/Areas switch, area picker; search and filters planned) over the
+  inspector (left), room graph or area map with their zoom buttons
+  (center) and findings log (right, planned). Review actions (accept,
+  flag, reopen, issue) are planned as dialogs.
 
 ### GUI structure
 
