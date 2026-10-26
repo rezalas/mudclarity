@@ -185,6 +185,15 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 
 	case Settings_Shown:
 		out.settings_open = v.is_open
+		if v.is_open {
+			out.help_open = false // One dialog at a time
+		}
+
+	case Help_Shown:
+		out.help_open = v.is_open
+		if v.is_open {
+			out.settings_open = false
+		}
 
 	case Theme_Chosen:
 		next := out.settings

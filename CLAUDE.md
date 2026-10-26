@@ -41,6 +41,8 @@ mudclarity/
 │   ├── search.odin          # Room search: the index and ranked matching
 │   ├── settings_store.odin  # The settings file at run time; theme_for; save_settings
 │   ├── settings_view.odin   # The Settings dialog, button and shortcut
+│   ├── keys.odin            # Every keyboard shortcut, in one table; chord_text
+│   ├── help_view.odin       # The Help dialog (F1, Ctrl+/, ?), listing the keys
 │   ├── search_view.odin     # The search box and its results popover
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
@@ -677,6 +679,24 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   is marked with the filters in use. The room graph,
   the area map and the area inspector's counts all follow it; the room
   inspector still lists every finding of the room, with its state.
+
+### Keyboard
+
+- Everything should work without a mouse (#48). **Every binding is in
+  `key_bindings` (`app/keys.odin`)**, which the Help dialog lists by
+  where it works. Chords the app registers (`SETTINGS_SHORTCUT`,
+  `HELP_SHORTCUTS`, the text size keys) are constants used both to
+  register them and in the table, and `keys_test` checks each registered
+  chord is listed: add a key to both, or the test fails. `chord_text`
+  writes a chord as the platform does (Ctrl, or Cmd on macOS).
+- **Help**: F1, Ctrl+/ (Cmd+/), or `?` outside a text box, plus a Help
+  button beside Settings. Skald only reports typed text while a text box
+  has focus, so `?` is matched as Shift+/ (`HELP_CHARACTER_SHORTCUT`)
+  and, when text does arrive, as the character; neither fires while
+  typing (`skald.is_typing`). One dialog at a time: opening Help closes
+  Settings and the other way round.
+- Shortcuts are registered at the top of `view`, before other widgets,
+  so they win over widgets built later.
 
 ### Room search
 

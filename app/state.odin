@@ -45,6 +45,7 @@ State :: struct {
 	settings:      settings.Settings,  // The current settings (settings_store.odin)
 	store:         ^Settings_Store,    // Where they are saved; nil saves nothing
 	settings_open: bool,               // The Settings dialog is showing
+	help_open:     bool,               // The Help dialog is showing
 	text_scale_draft: int,             // The text size slider while dragged (percent), or 0
 }
 

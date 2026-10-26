@@ -20,16 +20,6 @@ import "../settings"
 
 SETTINGS_DIALOG_WIDTH :: f32(480) // At the default text size
 
-// Ctrl+, opens Settings; Cmd+, on macOS, as Mac apps do.
-SETTINGS_SHORTCUT :: skald.Shortcut{key = .Comma, mods = {.Super} when ODIN_OS == .Darwin else {.Ctrl}}
-
-// The text size keys: Ctrl (Cmd on macOS) with =, - and 0, as browsers
-// use. Ctrl+Shift+= is Ctrl++ on most layouts, so it counts as =.
-@(private = "file")
-COMMAND_KEY :: skald.Modifier.Super when ODIN_OS == .Darwin else skald.Modifier.Ctrl
-
-@(private = "file")
-TEXT_SIZE_HINT :: "Cmd+= and Cmd+- change the text size anywhere; Cmd+0 resets it." when ODIN_OS == .Darwin else "Ctrl+= and Ctrl+- change the text size anywhere; Ctrl+0 resets it."
 
 // How far Ctrl+= and Ctrl+- move the text size, in percent: the slider
 // has 5% steps, but a key press that small is hard to see.
@@ -79,7 +69,7 @@ settings_dialog :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		),
 		components.caption(ctx, "Colour-blind friendly colours keep errors and warnings apart with red-green and blue-yellow colour blindness.", max_width = SETTINGS_DIALOG_WIDTH * components.ui_scale(th) - 2 * th.spacing.lg),
 		text_scale_control(s, ctx),
-		components.caption(ctx, TEXT_SIZE_HINT, max_width = SETTINGS_DIALOG_WIDTH * components.ui_scale(th) - 2 * th.spacing.lg),
+		components.caption(ctx, text_size_hint(), max_width = SETTINGS_DIALOG_WIDTH * components.ui_scale(th) - 2 * th.spacing.lg),
 		skald.spacer(th.spacing.md),
 		components.caption(ctx, saved_where(s), max_width = SETTINGS_DIALOG_WIDTH * components.ui_scale(th) - 2 * th.spacing.lg),
 		skald.row(
@@ -158,10 +148,23 @@ text_scale_control :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 text_scale_shortcuts :: proc(s: State, ctx: ^skald.Ctx(Msg)) {
 	percent := s.settings.text_scale
 	bigger := Msg(Text_Scale_Chosen{next_text_scale(percent, +1)})
-	skald.shortcut(ctx, {key = .Equals, mods = {COMMAND_KEY}}, bigger)
-	skald.shortcut(ctx, {key = .Equals, mods = {COMMAND_KEY, .Shift}}, bigger)
-	skald.shortcut(ctx, {key = .Minus, mods = {COMMAND_KEY}}, Msg(Text_Scale_Chosen{next_text_scale(percent, -1)}))
-	skald.shortcut(ctx, {key = .N0, mods = {COMMAND_KEY}}, Msg(Text_Scale_Chosen{settings.DEFAULT_TEXT_SCALE}))
+	// Ctrl+Shift+= is Ctrl++ on most layouts, so it counts as =.
+	for chord in LARGER_TEXT_SHORTCUTS {
+		skald.shortcut(ctx, chord, bigger)
+	}
+	skald.shortcut(ctx, SMALLER_TEXT_SHORTCUT, Msg(Text_Scale_Chosen{next_text_scale(percent, -1)}))
+	skald.shortcut(ctx, RESET_TEXT_SHORTCUT, Msg(Text_Scale_Chosen{settings.DEFAULT_TEXT_SCALE}))
+}
+
+// The keys for the text size, as this platform writes them (keys.odin).
+@(private = "file")
+text_size_hint :: proc() -> string {
+	return fmt.tprintf(
+		"%s and %s change the text size anywhere; %s resets it.",
+		chord_text(LARGER_TEXT_SHORTCUTS[0]),
+		chord_text(SMALLER_TEXT_SHORTCUT),
+		chord_text(RESET_TEXT_SHORTCUT),
+	)
 }
 
 // The text size `steps` key presses away from `percent`, in range.
