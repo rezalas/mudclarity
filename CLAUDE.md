@@ -935,6 +935,9 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   colours for light and dark backgrounds (nothing else changed),
   `theme_for` applying them, choosing a palette, and `severity_color`
   following the theme.
+- Keys (`keys_test`): every chord the app registers is in the table,
+  every binding has keys and an action and every scope has bindings,
+  `chord_text` for the platform, and Help and Settings taking turns.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
   request, filters kept across a reload, changes with no world open,
