@@ -979,7 +979,8 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   `#` and spaces, duplicate vnums across areas, the limit and total, blank
   queries, Latin-1 names and picker order in the index, and searching and
   choosing a result in `step` (from the map, out of range, cleared by a
-  reload).
+  reload), and the highlight (kept within the results, reset by a new
+  query).
 - Corpus test (`app/corpus_test`) opens the whole world as the loading
   thread does (< 3 s), times the area map on its own (< 250 ms) and a
   one-letter search over every room (< 10 ms).

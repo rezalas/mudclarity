@@ -32,6 +32,9 @@ test_registered_shortcuts_are_listed :: proc(t: ^testing.T) {
 	testing.expect(t, listed(LARGER_TEXT_SHORTCUTS[0]))
 	testing.expect(t, listed(SMALLER_TEXT_SHORTCUT))
 	testing.expect(t, listed(RESET_TEXT_SHORTCUT))
+	for chord in SEARCH_SHORTCUTS {
+		testing.expectf(t, listed(chord), "%s isn't in the key bindings", chord_text(chord))
+	}
 }
 
 @(test)
