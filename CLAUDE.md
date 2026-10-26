@@ -454,14 +454,17 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   "filters": {"severities": ["error", "warning", "info"], "states": ["open", "flagged", "needs_review"]},
   "format": "mudclarity-settings",
   "palette": "standard",
-  "text_size": "default",
+  "text_scale": 100,
   "theme": "system",
   "version": 1
 }
 ```
 
-- Values are written as names, not numbers, so the file reads well and
-  survives reordering an enum.
+- Choices are written as names, not numbers, so the file reads well and
+  survives reordering an enum. `text_scale` is a percentage (75 to 200,
+  in steps of 5; anything else is brought into range). The first files
+  had a named `text_size` ("small" ... "largest"); it is read as the
+  percentage it stood for and dropped on the next save.
 - It is untrusted input, and reading it never fails: a missing file gives
   the defaults; an unreadable one (too large, not JSON, wrong format) gives
   the defaults and a warning for a banner, and is kept as
@@ -487,9 +490,15 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   macOS). Changes apply at once, so it has only Close (or Escape). It says
   where the file is. Theme: follow the system, light, dark (with a chosen
   theme, the OS switching light/dark no longer changes it). Text size:
-  90% to 200% (`settings.TEXT_SCALES`), also Ctrl+= / Ctrl+- / Ctrl+0
-  (Cmd on macOS) anywhere. `theme_for` builds the theme for the settings:
-  the chosen or OS theme through `scaled_theme` (fonts, spacing, radii),
+  a slider from 75% to 200% in 5% steps, with clickable marks every 25%
+  and the value beside it; dragging only shows the value
+  (`text_scale_draft`) and it is applied when the mouse is let go, since
+  restyling mid-drag would move the slider under the pointer. Ctrl+= /
+  Ctrl+- (Cmd on macOS) step it by 10% anywhere and Ctrl+0 resets it; a
+  change refits both canvases. `theme_for` builds the theme for the settings:
+  the chosen or OS theme with the app's type sizes (`app_type`: small and
+  body text a step above Skald's 13 and 14 px, since this app is mostly
+  reading), then `scaled_theme` (fonts, spacing, radii),
   also when following an OS light/dark switch. The World toolbar is a
   `wrap_row`, so at large sizes it wraps instead of running off.
 - Testing the GUI by hand changes the settings file: point
@@ -547,8 +556,9 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
 - **Text size.** Fixed widths and heights (panels, popovers, dialogs,
   the picker) are written at the default text size and multiplied by
-  `components.ui_scale(ctx.theme)` (body font size ÷ 14), which follows
-  the Text size setting through the theme; canvases get it as
+  `components.ui_scale(ctx.theme)` (body font size ÷ 14, Skald's own
+  body size, so with `app_type`'s 15 px the panels are a little wider to
+  match), which follows the Text size setting through the theme; canvases get it as
   `text_scale` in their data for labels. A new fixed size must do the
   same, or it won't grow with the text.
 - Odin checks a generic proc's body only where it is instantiated, so a

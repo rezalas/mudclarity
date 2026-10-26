@@ -27,45 +27,48 @@ test_scaled_theme :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_theme_for_applies_the_text_size :: proc(t: ^testing.T) {
+test_theme_for_applies_the_text_scale :: proc(t: ^testing.T) {
 	s := settings.DEFAULTS
 	s.theme = .Dark
-	for size in settings.Text_Size {
-		s.text_size = size
+	base := app_type(skald.theme_dark())
+	for percent in ([]int{75, 100, 115, 150, 200}) {
+		s.text_scale = percent
 		th := theme_for(s)
-		want := skald.theme_dark().font.size_md * settings.TEXT_SCALES[size]
-		testing.expectf(t, th.font.size_md == want, "%v: size_md %v, want %v", size, th.font.size_md, want)
-		testing.expectf(t, abs(components.ui_scale(&th) - settings.TEXT_SCALES[size]) < 0.0001, "%v: ui_scale %v", size, components.ui_scale(&th))
+		factor := f32(percent) / 100
+		testing.expectf(t, abs(th.font.size_md - base.font.size_md * factor) < 0.001, "%d%%: size_md %v", percent, th.font.size_md)
+		testing.expectf(t, abs(components.ui_scale(&th) - base.font.size_md * factor / components.BASE_FONT_SIZE) < 0.001, "%d%%: ui_scale %v", percent, components.ui_scale(&th))
 	}
+	// A value that slipped out of range is used in range.
+	s.text_scale = 0
+	testing.expect_value(t, theme_for(s).font.size_md, base.font.size_md * f32(settings.MIN_TEXT_SCALE) / 100)
 }
 
 @(test)
-test_next_text_size :: proc(t: ^testing.T) {
-	testing.expect_value(t, next_text_size(.Default, +1), settings.Text_Size.Large)
-	testing.expect_value(t, next_text_size(.Default, -1), settings.Text_Size.Small)
-	testing.expect_value(t, next_text_size(.Largest, +1), settings.Text_Size.Largest)
-	testing.expect_value(t, next_text_size(.Small, -1), settings.Text_Size.Small)
-	testing.expect_value(t, next_text_size(.Small, +10), settings.Text_Size.Largest)
+test_next_text_scale :: proc(t: ^testing.T) {
+	testing.expect_value(t, next_text_scale(100, +1), 110)
+	testing.expect_value(t, next_text_scale(115, -1), 105)
+	testing.expect_value(t, next_text_scale(195, +1), settings.MAX_TEXT_SCALE)
+	testing.expect_value(t, next_text_scale(80, -1), settings.MIN_TEXT_SCALE)
 }
 
 @(test)
-test_choosing_a_text_size :: proc(t: ^testing.T) {
+test_choosing_a_text_scale :: proc(t: ^testing.T) {
 	store := Settings_Store {
 		loaded = {settings = settings.DEFAULTS, status = .Missing},
 	}
 	s := init_with(&store)
 	effect: Effect
-	s, effect = step(s, Text_Size_Chosen{.Larger})
+	s, effect = step(s, Text_Scale_Chosen{150})
 	apply, ok := effect.(Apply_Settings)
 	if !testing.expect(t, ok) do return
-	testing.expect_value(t, apply.settings.text_size, settings.Text_Size.Larger)
-	_, effect = step(s, Text_Size_Chosen{.Larger})
+	testing.expect_value(t, apply.settings.text_scale, 150)
+	_, effect = step(s, Text_Scale_Chosen{150})
 	testing.expect(t, effect == nil, "the same size changes nothing")
 
 	// Following the OS's light/dark keeps the chosen size.
 	_, effect = step(s, Theme_Changed{})
 	follow, follows := effect.(Follow_System_Theme)
 	if !testing.expect(t, follows) do return
-	testing.expect_value(t, follow.settings.text_size, settings.Text_Size.Larger)
+	testing.expect_value(t, follow.settings.text_scale, 150)
 	finish(s)
 }

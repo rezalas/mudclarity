@@ -117,7 +117,7 @@ parse :: proc(data: []u8, allocator := context.allocator) -> Loaded {
 	}
 	bad := make([dynamic]string, context.temp_allocator)
 	read_name(root, "theme", THEME_NAMES, &l.settings.theme, &bad)
-	read_name(root, "text_size", TEXT_SIZE_NAMES, &l.settings.text_size, &bad)
+	read_text_scale(root, &l.settings.text_scale, &bad)
 	read_name(root, "palette", PALETTE_NAMES, &l.settings.palette, &bad)
 	read_filters(root, &l.settings.filters, &bad)
 
@@ -187,7 +187,8 @@ encode :: proc(s: Settings, original: string) -> string {
 	root["format"] = json.String(FORMAT_NAME)
 	root["version"] = json.Integer(FORMAT_VERSION)
 	root["theme"] = json.String(THEME_NAMES[s.theme])
-	root["text_size"] = json.String(TEXT_SIZE_NAMES[s.text_size])
+	root["text_scale"] = json.Integer(s.text_scale)
+	delete_key(&root, "text_size") // Replaced by text_scale; read once, then gone
 	root["palette"] = json.String(PALETTE_NAMES[s.palette])
 	filters, _ := root["filters"].(json.Object)
 	if filters == nil {
@@ -232,6 +233,33 @@ read_name :: proc(root: json.Object, key: string, names: [$E]string, value: ^E, 
 		}
 	}
 	append(bad, key)
+}
+
+// "text_scale" (a percentage), or the older "text_size" name. Out of
+// range or between steps is brought onto the nearest step.
+@(private = "file")
+read_text_scale :: proc(root: json.Object, percent: ^int, bad: ^[dynamic]string) {
+	if raw, present := root["text_scale"]; present {
+		if n, is_integer := raw.(json.Integer); is_integer {
+			percent^ = clamp_text_scale(int(clamp(n, -1000, 1000)))
+		} else {
+			append(bad, "text_scale")
+		}
+		return
+	}
+	raw, present := root["text_size"]
+	if !present {
+		return
+	}
+	if name, is_string := raw.(json.String); is_string {
+		for legacy in LEGACY_TEXT_SIZES {
+			if legacy.name == name {
+				percent^ = legacy.percent
+				return
+			}
+		}
+	}
+	append(bad, "text_size")
 }
 
 @(private = "file")

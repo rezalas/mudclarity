@@ -35,7 +35,8 @@ Msg :: union {
 	Dismiss_Warning,
 	Settings_Shown,
 	Theme_Chosen,
-	Text_Size_Chosen,
+	Text_Scale_Chosen,
+	Text_Scale_Dragged,
 	Settings_Saved,
 	Theme_Changed,
 	Quit_Requested,
@@ -148,9 +149,16 @@ Theme_Chosen :: struct {
 	theme: settings.Theme_Choice,
 }
 
-// The Text size choice in the Settings dialog, or Ctrl+= / Ctrl+- / Ctrl+0.
-Text_Size_Chosen :: struct {
-	size: settings.Text_Size,
+// A text size to use, in percent: from the Settings dialog (a mark, the
+// slider let go, an arrow key) or Ctrl+= / Ctrl+- / Ctrl+0.
+Text_Scale_Chosen :: struct {
+	percent: int,
+}
+
+// The text size slider is being dragged: shown, but only applied when the
+// mouse is let go (restyling mid-drag would move the slider under it).
+Text_Scale_Dragged :: struct {
+	percent: int,
 }
 
 // The settings file was written. `error` is "" on success, else

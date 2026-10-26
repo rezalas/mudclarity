@@ -54,8 +54,8 @@ settings_store_close :: proc(store: ^Settings_Store) {
 	free(store)
 }
 
-// The Skald theme the settings ask for: light, dark or the OS's, at the
-// chosen text size.
+// The Skald theme the settings ask for: light, dark or the OS's, with the
+// app's type sizes (app_type), at the chosen text size.
 theme_for :: proc(s: settings.Settings) -> skald.Theme {
 	base: skald.Theme
 	switch s.theme {
@@ -66,7 +66,19 @@ theme_for :: proc(s: settings.Settings) -> skald.Theme {
 	case .System:
 		base = skald.theme_system()
 	}
-	return scaled_theme(base, settings.TEXT_SCALES[s.text_size])
+	return scaled_theme(app_type(base), f32(settings.clamp_text_scale(s.text_scale)) / 100)
+}
+
+// The app's type sizes on `base`. Skald's small and body text (13 and 14
+// px) suit a dense widget kit; this app is mostly reading, so labels,
+// buttons, captions and inspector text are a step larger. Headings and
+// the summary numbers keep Skald's sizes.
+app_type :: proc(base: skald.Theme) -> skald.Theme {
+	t := base
+	t.font.size_xs = 12
+	t.font.size_sm = 14
+	t.font.size_md = 15
+	return t
 }
 
 // `base` with its font sizes, spacing and corner radii multiplied by

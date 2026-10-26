@@ -36,7 +36,7 @@ test_settings_start_from_the_store :: proc(t: ^testing.T) {
 	finish(s)
 
 	store := Settings_Store {
-		loaded = {settings = {theme = .Dark, text_size = .Large, filters = settings.DEFAULT_FILTERS}, status = .Read, warning = "settings were odd"},
+		loaded = {settings = {theme = .Dark, text_scale = 125, filters = settings.DEFAULT_FILTERS}, status = .Read, warning = "settings were odd"},
 	}
 	s = init_with(&store)
 	testing.expect_value(t, s.store, &store)

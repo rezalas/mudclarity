@@ -15,10 +15,10 @@ import "../testkit"
 
 @(private = "file")
 CUSTOM :: Settings {
-	theme     = .Dark,
-	text_size = .Larger,
-	palette   = .Colour_Blind,
-	filters   = {severities = {.Error}, states = {.Open, .Accepted}},
+	theme      = .Dark,
+	text_scale = 150,
+	palette    = .Colour_Blind,
+	filters    = {severities = {.Error}, states = {.Open, .Accepted}},
 }
 
 @(private = "file")
@@ -56,7 +56,7 @@ test_bad_values_reset_only_that_setting :: proc(t: ^testing.T) {
 		"filters": {"severities": ["error", "loud"], "states": ["open"]}}`)
 	testing.expect_value(t, l.status, Load_Status.Read)
 	testing.expect_value(t, l.settings.theme, DEFAULTS.theme)
-	testing.expect_value(t, l.settings.text_size, Text_Size.Large)
+	testing.expect_value(t, l.settings.text_scale, 125) // The old name "large"
 	testing.expect_value(t, l.settings.palette, DEFAULTS.palette)
 	testing.expect_value(t, l.settings.filters, DEFAULT_FILTERS)
 	for key in ([]string{"theme", "palette", "filters"}) {
