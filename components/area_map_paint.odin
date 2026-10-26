@@ -89,7 +89,7 @@ paint_node :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter, origin: [2]f32, a
 // with its severity marker, and the accent ring when it is the area the
 // room graph shows. Shared with the legend.
 paint_area_circle :: proc(r: ^skald.Renderer, c: skald.Theme_Colors, centre: [2]f32, radius, zoom: f32, mark: Room_Mark, is_unopened, is_current: bool) {
-	skald.draw_circle(r, centre, radius, area_fill(c, is_unopened), true)
+	paint_dot(r, centre, radius, area_fill(c, is_unopened))
 	outline, width := area_outline(c, mark)
 	paint_ring(r, centre, radius, width, outline)
 	if is_current {

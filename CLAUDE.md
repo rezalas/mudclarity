@@ -576,6 +576,10 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   triangle for a warning, a dot for info, in the severity colour; in a
   room box's top-left corner, inside an area's circle. Anything new that
   shows a severity on a map draws it through `paint_severity_marker`.
+- **Small circles**: Skald's `draw_circle` uses one segment per 6 px of
+  circumference, so a circle under ~3 px radius comes out a triangle
+  (and small ones polygons). Fill circles with `paint_dot` (a fully
+  rounded rectangle, drawn as a signed distance field) instead.
 - **Colours that carry meaning** come from the theme: a severity's
   colour only through `components.severity_color` (danger, warning,
   muted text), the selection and accents from `primary`. Never hard-code

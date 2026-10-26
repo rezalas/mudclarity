@@ -105,7 +105,7 @@ paint_room_box :: proc(r: ^skald.Renderer, c: skald.Theme_Colors, box: skald.Rec
 		paint_room_marker(r, box, zoom, mark.worst, severity_color(c, mark.worst))
 	}
 	if is_displaced {
-		skald.draw_circle(r, {box.x + box.w - 6 * zoom, box.y + 6 * zoom}, 2.5 * zoom, c.fg_muted, true)
+		paint_dot(r, {box.x + box.w - 6 * zoom, box.y + 6 * zoom}, 2.5 * zoom, c.fg_muted)
 	}
 	x := box.x + box.w - 7 * zoom
 	if leads_up {

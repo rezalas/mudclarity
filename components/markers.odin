@@ -28,7 +28,7 @@ paint_severity_marker :: proc(r: ^skald.Renderer, at: [2]f32, size: f32, severit
 	case .Warning:
 		skald.draw_polygon(r, {at + {0, -h}, at + {h, h * 0.8}, at + {-h, h * 0.8}}, color, true)
 	case .Info:
-		skald.draw_circle(r, at, size * 0.32, color, true)
+		paint_dot(r, at, size * 0.32, color)
 	}
 }
 

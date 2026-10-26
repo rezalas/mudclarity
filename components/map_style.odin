@@ -107,3 +107,10 @@ paint_ring :: proc(r: ^skald.Renderer, centre: [2]f32, radius, width: f32, color
 	}
 	skald.draw_polyline(r, points, width, color, true)
 }
+
+// A small filled circle. Skald's draw_circle uses one segment per 6 px of
+// circumference, so under a ~3 px radius it comes out a triangle; a fully
+// rounded rectangle is drawn as a signed distance field, round at any size.
+paint_dot :: proc(r: ^skald.Renderer, at: [2]f32, radius: f32, color: skald.Color) {
+	skald.draw_rect(r, {at.x - radius, at.y - radius, radius * 2, radius * 2}, color, radius)
+}
