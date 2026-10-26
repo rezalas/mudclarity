@@ -129,12 +129,14 @@ jobs:
           tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin" --strip-components=1
           echo "$RUNNER_TEMP/odin" >> "$GITHUB_PATH"
 
-      # Odin ships STB prebuilt for macOS only; `test` also type-checks
-      # the Linux targets, whose STB package needs the libraries built.
-      - name: Build Odin's STB libraries
+      # Odin ships STB prebuilt for macOS (lib/darwin) only; `test` also
+      # type-checks the Linux targets, whose STB package checks that
+      # lib/*.a exist. `build_stb.sh unix` makes them (macOS objects, but
+      # the type check doesn't link them).
+      - name: Build Odin's STB libraries for the Linux type checks
         run: |
           cd "$(odin root)/vendor/stb/src"
-          sh build_stb.sh
+          sh build_stb.sh unix
 
       - name: Build the app
         run: ./build.sh
