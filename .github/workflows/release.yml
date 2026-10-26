@@ -1,9 +1,14 @@
-# Publish a release when a version tag (v0.1.0, v1.2.0-rc.1, ...) is
-# pushed: run every CI job (ci.yml), then package what the Linux and
+# Publish a release's packages when a version tag (v0.1.0, v1.2.0-rc.1,
+# ...) appears: run every CI job (ci.yml), then package what the Linux and
 # Windows jobs built, attest where each package came from, and attach the
-# packages and their SHA-256 sums to a GitHub release for the tag. A tag
-# with a hyphen (v1.0.0-rc.1) makes a pre-release. macOS comes later, with
-# signing.
+# packages and their SHA-256 sums to the tag's GitHub release.
+#
+# Either way of releasing works:
+#   - Publish a release in GitHub's interface (that creates the tag): the
+#     packages are attached to it a few minutes later.
+#   - Push a tag with git: the release is created, with generated notes;
+#     a hyphen in the tag (v1.0.0-rc.1) makes it a pre-release.
+# macOS comes later, with signing.
 name: Release
 
 on:
@@ -54,16 +59,27 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
 
+      # A release made in GitHub's interface creates the tag when it is
+      # published, which starts this workflow: the release is already
+      # there, so attach the packages to it and leave its title, notes and
+      # pre-release setting as written. A tag pushed with git has no
+      # release yet: create one. Re-running either way replaces the files.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          prerelease=""
-          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$TAG" dist/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --verify-tag \
-            --title "Mud Clarity $TAG" \
-            --generate-notes \
-            $prerelease \
-            --notes "**Downloads:** Windows (\`.zip\`, SDL3 included) and Linux (\`.tar.gz\`). On Linux, install **SDL3 3.2 or newer** and a Vulkan driver from your distribution and keep them up to date; they aren't included (see README.txt in the package). Check a download with \`sha256sum -c SHA256SUMS\` or \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+            echo "Attached the packages to the existing release $TAG."
+          else
+            prerelease=""
+            case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "Mud Clarity $TAG" \
+              --generate-notes \
+              $prerelease \
+              --notes "**Downloads:** Windows (\`.zip\`, SDL3 included) and Linux (\`.tar.gz\`). On Linux, install **SDL3 3.2 or newer** and a Vulkan driver from your distribution and keep them up to date; they aren't included (see README.txt in the package). Check a download with \`sha256sum -c SHA256SUMS\` or \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
+            echo "Created the release $TAG."
+          fi

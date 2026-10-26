@@ -920,13 +920,25 @@ build tool's commands, as on a developer's machine:
 - CI's Linux (test) and Windows jobs build the package and keep it as a
   run artifact for 14 days (`mudclarity-linux-amd64`,
   `mudclarity-windows-amd64`), to try a branch's build.
-- **Publishing**: push a tag `vX.Y.Z` (a hyphen, `v1.0.0-rc.1`, makes a
-  pre-release). `release.yml` runs every CI job (it calls `ci.yml`), then
+- **Publishing**: either
+  - **in GitHub's interface**: draft a release with a new tag `vX.Y.Z`,
+    write its notes and publish it. Publishing creates the tag (a draft
+    doesn't, so nothing runs until then), and the packages are attached
+    to the release a few minutes later; or
+  - **with git**: `git tag vX.Y.Z && git push origin vX.Y.Z`, and the
+    workflow creates the release with generated notes (a hyphen,
+    `v1.0.0-rc.1`, makes it a pre-release).
+
+  Either way `release.yml` runs every CI job (it calls `ci.yml`), then
   packages the two artifacts as `mudclarity-<tag>-linux-amd64.tar.gz` and
   `mudclarity-<tag>-windows-amd64.zip`, writes `SHA256SUMS`, signs a build
   provenance attestation for each package (`gh attestation verify <file>
-  --repo rezalas/mudclarity` checks one), and creates the GitHub release
-  with generated notes. Nothing is published if any CI job fails.
+  --repo rezalas/mudclarity` checks one), and attaches them: to the
+  release if it exists (leaving its title and notes as written), else to
+  a new one. Re-running the workflow replaces the files. If a CI job
+  fails nothing is attached; a release published in the interface then
+  stays up without packages until the problem is fixed and the workflow
+  re-run (or the release is deleted).
 - macOS packages come later, with Apple signing and notarization.
 
 ### Dependencies
