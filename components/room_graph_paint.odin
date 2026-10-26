@@ -32,8 +32,6 @@ import "../models"
 VNUM_LABEL_ZOOM :: f32(0.45)
 NAME_LABEL_ZOOM :: f32(1.15)
 
-BENT_ALPHA :: f32(0.55)
-
 paint_room_graph :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter) {
 	c := d.colors
 	skald.draw_rect(p.r, p.bounds, c.bg, 0)
@@ -71,22 +69,8 @@ paint_room :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]f32,
 	if !overlaps(box, p.bounds) {
 		return
 	}
-	radius := 6 * zoom
-	skald.draw_rect(p.r, box, c.surface, radius)
-
-	outline, width := c.border, f32(1)
-	if mark := d.marks[room]; mark.has_finding {
-		outline = severity_color(c, mark.worst)
-		width = 1.5 if mark.worst == .Info else 2
-	}
-	if room == d.selected {
-		outline, width = c.primary, 3
-	}
-	skald.draw_rect_outline(p.r, box, width, outline, radius, true)
-	if d.layout.rooms[room].is_displaced {
-		skald.draw_circle(p.r, {box.x + box.w - 6 * zoom, box.y + 6 * zoom}, 2.5 * zoom, c.fg_muted, true)
-	}
-	paint_level_markers(d, p, box, room)
+	placed := d.layout.rooms[room]
+	paint_room_box(p.r, c, box, zoom, d.marks[room], room == d.selected, placed.is_displaced, placed.leads_up, placed.leads_down)
 
 	if zoom >= VNUM_LABEL_ZOOM {
 		size := 11 * min(zoom, 1.5) * d.text_scale
@@ -109,21 +93,26 @@ paint_room :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]f32,
 	}
 }
 
-// Triangles on a room with exits to another level: up (top right,
-// pointing up) and down (bottom right, pointing down).
-@(private = "file")
-paint_level_markers :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, box: skald.Rect, room: int) {
-	placed := d.layout.rooms[room]
-	zoom := d.state.camera.zoom
-	s := 5 * zoom
-	x := box.x + box.w - 7 * zoom
-	if placed.leads_up {
-		y := box.y + 5 * zoom
-		skald.draw_polygon(p.r, {{x - s, y + s}, {x + s, y + s}, {x, y}}, d.colors.primary, true)
+// A room's box: filled, outlined (room_outline), with its severity marker,
+// the displaced dot (top right) and triangles for exits to another level
+// (up at the top right, down at the bottom right). Shared with the legend.
+paint_room_box :: proc(r: ^skald.Renderer, c: skald.Theme_Colors, box: skald.Rect, zoom: f32, mark: Room_Mark, is_selected, is_displaced, leads_up, leads_down: bool) {
+	radius := 6 * zoom
+	skald.draw_rect(r, box, c.surface, radius)
+	outline, width := room_outline(c, mark, is_selected)
+	skald.draw_rect_outline(r, box, width, outline, radius, true)
+	if mark.has_finding {
+		paint_room_marker(r, box, zoom, mark.worst, severity_color(c, mark.worst))
 	}
-	if placed.leads_down {
-		y := box.y + box.h - 5 * zoom
-		skald.draw_polygon(p.r, {{x - s, y - s}, {x + s, y - s}, {x, y}}, d.colors.primary, true)
+	if is_displaced {
+		paint_dot(r, {box.x + box.w - 6 * zoom, box.y + 6 * zoom}, 2.5 * zoom, c.fg_muted)
+	}
+	x := box.x + box.w - 7 * zoom
+	if leads_up {
+		paint_level_triangle(r, {x, box.y + 5 * zoom}, 5 * zoom, true, c.primary)
+	}
+	if leads_down {
+		paint_level_triangle(r, {x, box.y + box.h - 5 * zoom}, 5 * zoom, false, c.primary)
 	}
 }
 
@@ -147,9 +136,9 @@ paint_edge :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]f32,
 
 	if e.kind == .Straight {
 		start, end := a + out * half, b - out * half
-		skald.draw_line(p.r, start, end, width, c.fg_muted, true)
+		skald.draw_line(p.r, start, end, width, straight_exit_color(c), true)
 		if !e.is_two_way {
-			paint_arrowhead(p, end, out, camera.zoom, c.fg_muted)
+			paint_arrowhead(p.r, end, out, 7 * camera.zoom, straight_exit_color(c))
 		}
 		return
 	}
@@ -159,12 +148,10 @@ paint_edge :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]f32,
 	back := direction_vector(layout.OPPOSITE[e.direction]) if e.is_two_way else -out
 	reach := CELL_SIZE * camera.zoom * 0.6
 	start, end := a + out * half, b + back * half
-	// Translucent, so a tangle of conflicts doesn't hide the corridors.
-	bent := c.warning
-	bent[3] *= BENT_ALPHA
+	bent := bent_exit_color(c)
 	skald.draw_bezier(p.r, start, start + out * reach, end + back * reach, end, width, bent, true)
 	if !e.is_two_way {
-		paint_arrowhead(p, end, -back, camera.zoom, bent)
+		paint_arrowhead(p.r, end, -back, 7 * camera.zoom, bent)
 	}
 }
 
@@ -182,17 +169,7 @@ paint_external :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]
 	if !overlaps(span(start, end, 8), p.bounds) {
 		return
 	}
-	width := max(1, 1.5 * camera.zoom)
-	skald.draw_line(p.r, start, end, width, d.colors.primary, true)
-	skald.draw_rect_outline(p.r, {end.x - 4 * camera.zoom, end.y - 4 * camera.zoom, 8 * camera.zoom, 8 * camera.zoom}, width, d.colors.primary, 4 * camera.zoom, true)
-}
-
-@(private = "file")
-paint_arrowhead :: proc(p: skald.Canvas_Painter, tip, toward: [2]f32, zoom: f32, color: skald.Color) {
-	size := 7 * zoom
-	side := [2]f32{-toward.y, toward.x}
-	back := tip - toward * size
-	skald.draw_polygon(p.r, {tip, back + side * size * 0.5, back - side * size * 0.5}, color, true)
+	paint_exit_stub(p.r, start, end, camera.zoom, d.colors.primary)
 }
 
 // Screen direction of an exit. North is up the screen.

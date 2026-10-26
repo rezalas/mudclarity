@@ -57,6 +57,9 @@ mudclarity/
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
 │   ├── room_graph_keys.odin # The room graph's keys (arrows follow exits)
+│   ├── markers.odin         # Severity markers: cross, triangle, dot
+│   ├── map_style.odin       # Map colours, widths and shapes, shared by painters and legend
+│   ├── legend.odin          # The maps' legend: every mark, drawn by the maps' own painting
 │   ├── area_map.odin        # Area map: one circle per area, links between them
 │   ├── area_map_paint.odin  # Painting the area map
 │   ├── area_map_keys.odin   # The area map's keys (arrows pick the nearest area that way)
@@ -569,6 +572,15 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   auto-id may share with a visible widget: a click near the search box
   once chose a text size in the closed Settings dialog. Return
   `dialog(ctx, false, spacer(0), ...)` while closed (it restores focus).
+- **Severity never relies on colour alone**: every marked room and area
+  also gets a **marker** (`markers.odin`): a cross for an error, a
+  triangle for a warning, a dot for info, in the severity colour; in a
+  room box's top-left corner, inside an area's circle. Anything new that
+  shows a severity on a map draws it through `paint_severity_marker`.
+- **Small circles**: Skald's `draw_circle` uses one segment per 6 px of
+  circumference, so a circle under ~3 px radius comes out a triangle
+  (and small ones polygons). Fill circles with `paint_dot` (a fully
+  rounded rectangle, drawn as a signed distance field) instead.
 - **Colours that carry meaning** come from the theme: a severity's
   colour only through `components.severity_color` (danger, warning,
   muted text), the selection and accents from `primary`. Never hard-code
@@ -744,6 +756,30 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   canvases ignore presses under any open popover (`mouse_over_overlay` in
   `canvas_gestures`), so a click on a result (or a dropdown entry) never
   also lands on the map beneath.
+
+### Legend
+
+- **Where it shows**: when the canvas has room (`legend_docks`: at least
+  three legends wide and tall enough for all of it, so roughly a
+  1600x900 window at 100% text), it **stays docked in the bottom-right
+  corner**, always shown, and the Legend button is hidden; it docks and
+  undocks as the window or the text size changes. Otherwise each map has
+  a **Legend** button (and `L` while it has focus) that opens it over the
+  canvas's top left. Either way it lists every mark the map draws:
+  rooms (plain, each severity, selected, displaced, up/down exits) and
+  exits (two-way, one-way, bent, leaving the area) on the room graph;
+  areas (plain, each severity, unopened, current) and links (exits,
+  portals only, one way) on the area map (`ROOM_GRAPH_LEGEND`,
+  `AREA_MAP_LEGEND`). Its open state is in each map's state.
+- **Each swatch is drawn by the maps' own painting** (`paint_room_box`,
+  `paint_area_circle`, the shapes and colour helpers in `map_style.odin`)
+  with the theme's colours, so it always matches the map, whatever the
+  palette, light/dark or text size. Change a mark in one place and both
+  follow; a new mark needs a swatch and a label (`legend_test` checks
+  every swatch is listed once and draws).
+- It publishes its rect (clicks on it don't reach the map), is built only
+  while open, and scrolls when taller than the canvas. Keys are left to
+  Help (F1), which the footer says.
 
 ### Area map
 
@@ -996,6 +1032,15 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Corpus test (`app/corpus_test`) opens the whole world as the loading
   thread does (< 3 s), times the area map on its own (< 250 ms) and a
   one-letter search over every room (< 10 ms).
+- Painting can be tested without a GPU: a `skald.Renderer` with a
+  `Window_Target` and a batch only records vertices (as Skald's
+  `draw_vector_test` does; see `markers_test`). Severity markers are
+  checked to draw, to differ in shape, and to stay in their place; the
+  legend (`legend_test`): every swatch listed once with a label, drawing
+  inside its cell, colours equal to the painters' (and following a
+  palette change), small dots drawn round, the toggle on both maps, and
+  docking (its size, roomy versus narrow, short or larger-text canvases).
+  The headless renderer helpers are in `components/helpers_test.odin`.
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
   length limits, and every byte value producing valid UTF-8;
   `display_user_text` on UTF-8, invalid and cut-off sequences, controls,

@@ -24,6 +24,7 @@ ROOM_GRAPH_KEYS := [?]Key_Hint {
 	{"+, -", "Zoom in or out"},
 	{"0", "Fit the level to the view"},
 	{"Esc", "Deselect the room (as does clicking empty space)"},
+	{"L", "Show or hide the legend (a large map keeps it in the corner)"},
 }
 
 @(private)
@@ -51,6 +52,9 @@ room_graph_keys :: proc(d: ^Room_Graph_Data, ctx: ^skald.Ctx(Room_Graph_Msg), la
 		}
 		if .Escape in keys && d.selected >= 0 {
 			skald.send(ctx, Room_Graph_Msg(Room_Deselected{}))
+		}
+		if LEGEND_KEY in keys {
+			skald.send(ctx, Room_Graph_Msg(Legend_Toggled{}))
 		}
 	}
 	canvas_keys(ctx, last)
