@@ -12,6 +12,7 @@ import "gui:skald"
 
 import "../clarity"
 import "../components"
+import "../settings"
 import "../workspace"
 
 // The update Skald calls: step, then turn the effect into a Command.
@@ -60,7 +61,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		world_close(out.world)
 		out.world = v.world
-		apply_filters(out.world, out.filters)
+		apply_filters(out.world, out.settings.filters)
 		set_search(&out, "")
 		out.screen = .World
 		out.center = .Rooms
@@ -136,25 +137,25 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		out.filters_open = v.is_open
 
 	case Severity_Shown:
-		f := out.filters
+		f := out.settings.filters
 		if v.is_shown {
 			f.severities += {v.severity}
 		} else {
 			f.severities -= {v.severity}
 		}
-		set_filters(&out, f)
+		return set_filters(&out, f)
 
 	case State_Shown:
-		f := out.filters
+		f := out.settings.filters
 		if v.is_shown {
 			f.states += {v.state}
 		} else {
 			f.states -= {v.state}
 		}
-		set_filters(&out, f)
+		return set_filters(&out, f)
 
 	case Filters_Reset:
-		set_filters(&out, DEFAULT_FILTERS)
+		return set_filters(&out, DEFAULT_FILTERS)
 
 	case Note_Draft_Changed:
 		set_text(&out.note_draft, v.text)
@@ -179,15 +180,41 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 	case Dismiss_Error:
 		set_text(&out.error, "")
 
+	case Dismiss_Warning:
+		set_text(&out.warning, "")
+
+	case Settings_Shown:
+		out.settings_open = v.is_open
+
+	case Theme_Chosen:
+		next := out.settings
+		next.theme = v.theme
+		return change_settings(&out, next)
+
+	case Text_Size_Chosen:
+		next := out.settings
+		next.text_size = v.size
+		return change_settings(&out, next)
+
+	case Settings_Saved:
+		defer delete(v.error, runtime.heap_allocator())
+		if v.error != "" {
+			set_text(&out.error, v.error)
+		}
+
 	case Redraw:
 
 	case Theme_Changed:
-		return out, Follow_System_Theme{}
+		// Only when following the OS; a chosen theme stays.
+		if out.settings.theme == .System {
+			return out, Follow_System_Theme{out.settings}
+		}
 
 	case Quit_Requested:
 		world_close(out.world)
 		out.world = nil
 		set_text(&out.error, "")
+		set_text(&out.warning, "")
 		set_text(&out.loading_path, "")
 		set_text(&out.note_draft, "")
 		set_search(&out, "")
@@ -214,13 +241,26 @@ add_area_note :: proc(s: ^State) -> (State, Effect) {
 	return s^, Save_Review{ws}
 }
 
-// Change the filters and re-mark the open world's rooms and areas.
+// Use new settings: apply and save them, unless nothing changed.
 @(private = "file")
-set_filters :: proc(s: ^State, filters: Filters) {
-	s.filters = filters
-	if s.world != nil {
+change_settings :: proc(s: ^State, next: settings.Settings) -> (State, Effect) {
+	if next == s.settings {
+		return s^, nil
+	}
+	s.settings = next
+	return s^, Apply_Settings{s.store, next}
+}
+
+// Change the filters (a setting, so they are saved) and re-mark the open
+// world's rooms and areas.
+@(private = "file")
+set_filters :: proc(s: ^State, filters: Filters) -> (State, Effect) {
+	if s.world != nil && filters != s.settings.filters {
 		apply_filters(s.world, filters)
 	}
+	next := s.settings
+	next.filters = filters
+	return change_settings(s, next)
 }
 
 // Select a room on the room graph, switching area if it is in another

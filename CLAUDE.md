@@ -39,6 +39,8 @@ mudclarity/
 │   ├── filters_view.odin    # The Filters button and popover
 │   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
 │   ├── search.odin          # Room search: the index and ranked matching
+│   ├── settings_store.odin  # The settings file at run time; theme_for; save_settings
+│   ├── settings_view.odin   # The Settings dialog, button and shortcut
 │   ├── search_view.odin     # The search box and its results popover
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
@@ -96,6 +98,10 @@ mudclarity/
 │   ├── review.odin          # Finding keys/ids; merge a run with the file
 │   ├── edit.odin            # Reviews, issues, notes, refresh
 │   └── *_test.odin
+├── settings/                # package settings: the user's settings file (no GUI)
+│   ├── settings.odin        # Settings, defaults, the names written to the file
+│   ├── io.odin              # Path, load (never fails), save (atomic, keeps unknown keys)
+│   └── *_test.odin
 ├── validation/              # package validation: checks on a set of areas
 │   ├── validate.odin        # validate() entry point
 │   ├── world.odin           # Vnum indexes, completeness rule
@@ -124,6 +130,7 @@ Dependency direction:
 ```text
 main ─┬─ cli ─────────────────┐
       └─ app ─┬─ components ──┴─ workspace → clarity → validation → formats → models
+              ├─ settings → clarity
               └─ layout → models
 ```
 
@@ -435,6 +442,59 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 
 `check` exits 1 only for parse failures or errors that aren't accepted.
 
+## Settings File
+
+`settings.json` in a `mudclarity` folder in the OS's per-user config
+directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
+`~/Library/Application Support` on macOS, `$XDG_CONFIG_HOME` or
+`~/.config` on Linux). Pretty-printed JSON with sorted keys:
+
+```json
+{
+  "filters": {"severities": ["error", "warning", "info"], "states": ["open", "flagged", "needs_review"]},
+  "format": "mudclarity-settings",
+  "palette": "standard",
+  "text_size": "default",
+  "theme": "system",
+  "version": 1
+}
+```
+
+- Values are written as names, not numbers, so the file reads well and
+  survives reordering an enum.
+- It is untrusted input, and reading it never fails: a missing file gives
+  the defaults; an unreadable one (too large, not JSON, wrong format) gives
+  the defaults and a warning for a banner, and is kept as
+  `settings.json.bak` before the first save replaces it; a bad value
+  resets only that setting and is named in the warning.
+- Keys this version doesn't know (including inside `filters`) are kept
+  when saving: the file is read as a raw JSON object and ours are written
+  over it. A file from a newer `version` is read as far as possible and
+  never saved over.
+- Saves create the folder if needed and go to a temp file renamed into
+  place, like `area.clarity`.
+- In the GUI, `run` loads the file before the window opens (it is tiny)
+  into a heap `Settings_Store` (`app/settings_store.odin`) that lives
+  until the window closes; `init` starts from it (`init_with(store)`, so
+  tests use stores of their own) and shows its warning in a banner.
+  `State.settings` holds the current values. Every change goes through
+  `change_settings`, which returns `Apply_Settings`: `command_for`
+  restyles the app (`theme_for`) and saves on the GUI thread. A save
+  refused because the file is newer stays quiet (the load warning said
+  so); other failures show in the error banner.
+- The **Settings dialog** (`app/settings_view.odin`) is a modal opened by
+  the Settings button (Welcome and World headers) or Ctrl+, (Cmd+, on
+  macOS). Changes apply at once, so it has only Close (or Escape). It says
+  where the file is. Theme: follow the system, light, dark (with a chosen
+  theme, the OS switching light/dark no longer changes it). Text size:
+  90% to 200% (`settings.TEXT_SCALES`), also Ctrl+= / Ctrl+- / Ctrl+0
+  (Cmd on macOS) anywhere. `theme_for` builds the theme for the settings:
+  the chosen or OS theme through `scaled_theme` (fonts, spacing, radii),
+  also when following an OS light/dark switch. The World toolbar is a
+  `wrap_row`, so at large sizes it wraps instead of running off.
+- Testing the GUI by hand changes the settings file: point
+  `XDG_CONFIG_HOME` at a temp folder (Linux) so your own isn't touched.
+
 ## Visualization (Skald)
 
 - Skald renders with **Vulkan + SDL3**, not raylib. Do not add raylib; draw the
@@ -485,6 +545,12 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- **Text size.** Fixed widths and heights (panels, popovers, dialogs,
+  the picker) are written at the default text size and multiplied by
+  `components.ui_scale(ctx.theme)` (body font size ÷ 14), which follows
+  the Text size setting through the theme; canvases get it as
+  `text_scale` in their data for labels. A new fixed size must do the
+  same, or it won't grow with the text.
 - Odin checks a generic proc's body only where it is instantiated, so a
   `$Msg` view's imports count as unused in the `components` test build.
   Do the work that needs other packages (`strings`, `filepath`, ...) in
@@ -564,7 +630,8 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   − and + zoom about the canvas centre (`zoom_buttons`, shared with the
   area map) and Fit refits. Labels appear only when zoomed in enough to
   read. The hint beside the buttons is cut short with "…" (`hint`), so a
-  narrow window never makes the canvas wider than it.
+  narrow window never makes the canvas wider than it. Labels follow the
+  text size; a vnum label shrinks to fit its box if needed.
 - A newly shown area fits itself once the canvas has a size. Skald redraws
   only on events, so a load returns `Redraw_Soon` to get that frame.
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
@@ -577,10 +644,12 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   state; Reset goes back to `DEFAULT_FILTERS` (everything but accepted
   findings), and the button reads "Filters (changed)" otherwise. Escape,
   Done or a click elsewhere closes it.
-- `State.filters` is a plain `Filters` value (two bit sets) so settings
-  can keep it (#27). Changing it runs `apply_filters`, which re-marks the
-  open world's rooms and areas in place (a pass over the findings); a
-  newly loaded world is marked with the filters in use. The room graph,
+- The filters are a setting (`settings.Filters`, two bit sets; `app`
+  aliases it as `Filters`), kept in `State.settings.filters` and so
+  remembered between runs. Changing them runs `apply_filters`, which
+  re-marks the open world's rooms and areas in place (a pass over the
+  findings), and `change_settings`, which saves them; a newly loaded world
+  is marked with the filters in use. The room graph,
   the area map and the area inspector's counts all follow it; the room
   inspector still lists every finding of the room, with its state.
 
@@ -657,7 +726,7 @@ wrappers. The examples use `./build.sh`; on Windows use `build.bat` and
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
 # Type-check only. Vet only our packages: vendor/skald does not pass -vet.
-odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace,cli,layout,components,app
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,settings,workspace,cli,layout,components,app
 ```
 
 `-strict-style` applies to every package compiled, Skald included, so tests
@@ -762,6 +831,14 @@ Every change needs tests.
   use small worlds from `world_make(...)`.
 - Corpus test saves and reloads a review of the whole world in a temp dir.
 
+**Settings (`settings/`)**
+
+- Round trip is byte-identical; missing keys use the defaults; a bad value
+  resets only its setting and is named; unreadable files (empty, not JSON,
+  wrong root, format or version, too large) give the defaults; unknown
+  keys survive a save; newer files are read and refused for saving;
+  saving creates the folder; an unreadable file is backed up once.
+
 Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 `write_world`, ...) live in `testkit/`; a suite's own helpers stay in its
 `helpers_test.odin`.
@@ -796,9 +873,20 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Area notes (`area_notes_test`): the inspector's data, adding a note
   (blank drafts add nothing; the saved file is read back), a draft dropped
   with its area, loose files refused, and a failed save shown.
+- Settings in the GUI (`settings_test`): starting from a store and its
+  warning, choosing a theme (applied and saved once; the same choice does
+  nothing), only a followed system theme tracking the OS, `theme_for`,
+  `save_settings` (written, newer file left alone, no store or folder),
+  and a failed save shown.
+- Text size (`text_size_test`, `components/common_test`): `scaled_theme`
+  (fonts, spacing, radii; pills and colours unchanged), `theme_for` and
+  `ui_scale` for every size, `next_text_size` at the ends, choosing a
+  size, and an OS light/dark switch keeping it.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
-  request, filters kept across a reload, and changes with no world open.
+  request, filters kept across a reload, changes with no world open,
+  filter changes saved as settings (and no-op changes not), and saved
+  filters marking a newly loaded world.
 - Room search (`search_test`): ranking (vnum, exact, prefix, contains),
   `#` and spaces, duplicate vnums across areas, the limit and total, blank
   queries, Latin-1 names and picker order in the index, and searching and

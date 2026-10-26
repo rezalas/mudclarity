@@ -37,6 +37,7 @@ Area_Map_Data :: struct {
 	links:       []Area_Link,
 	current:     int,       // The area the room graph shows
 	colors:      skald.Theme_Colors, // Set by area_map_view for painting
+	text_scale:  f32,                // Likewise: the theme's ui_scale, for labels
 }
 
 Area_Map_State :: struct {
@@ -132,6 +133,7 @@ area_map_view :: proc(d: Area_Map_Data, ctx: ^skald.Ctx(Area_Map_Msg)) -> skald.
 	data := new(Area_Map_Data, context.temp_allocator) // Read by paint after view returns
 	data^ = d
 	data.colors = th.color
+	data.text_scale = ui_scale(th)
 	if last.w > 0 {
 		if d.state.needs_fit {
 			skald.send(ctx, Area_Map_Msg(Fitted{{last.w, last.h}}))

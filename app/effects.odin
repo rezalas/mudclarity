@@ -26,7 +26,15 @@ command_for :: proc(effect: Effect) -> skald.Command(Msg) {
 		context.allocator = runtime.heap_allocator()
 		return skald.cmd_thread(Msg, e, load_world)
 	case Follow_System_Theme:
-		return skald.cmd_set_theme(Msg, skald.theme_system())
+		return skald.cmd_set_theme(Msg, theme_for(e.settings))
+	case Apply_Settings:
+		// Saved here on the GUI thread, like the review file: it is a few
+		// hundred bytes. Only a failure needs a message back.
+		restyle := skald.cmd_set_theme(Msg, theme_for(e.settings))
+		if error := save_settings(e.store, e.settings); error != "" {
+			return skald.cmd_batch(restyle, skald.cmd_now(Msg(Settings_Saved{error = error})))
+		}
+		return restyle
 	case Save_Review:
 		// The file is small (~300 KB for the whole Riftshadow world) and
 		// the document must not change while it is written, so it is

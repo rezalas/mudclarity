@@ -71,3 +71,14 @@ banner :: proc(ctx: ^skald.Ctx($Msg), kind: Banner_Kind, message: string, on_dis
 		cross_align = .Stretch,
 	)
 }
+
+// The body text size the app's fixed sizes were designed at (Skald's
+// default `size_md`).
+BASE_FONT_SIZE :: f32(14)
+
+// How much the theme's text is scaled (the Text size setting), worked out
+// from the theme itself so nothing else needs passing around. Fixed widths
+// and heights, and text drawn on canvases, are multiplied by it.
+ui_scale :: proc(th: ^skald.Theme) -> f32 {
+	return th.font.size_md / BASE_FONT_SIZE if th.font.size_md > 0 else 1
+}

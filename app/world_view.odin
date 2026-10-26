@@ -88,6 +88,7 @@ header :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	return skald.row(
 		components.heading(ctx, title, is_large = true),
 		skald.flex(1, skald.text(location, th.color.fg_muted, th.font.size_md, overflow = .Ellipsis)),
+		settings_button(ctx),
 		skald.button(ctx, "Close", Msg(Close_World{}), bg = th.color.surface, fg = th.color.fg),
 		spacing = th.spacing.md,
 		cross_align = .Center,
@@ -99,14 +100,16 @@ header :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 @(private = "file")
 toolbar :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	th := ctx.theme
-	return skald.row(
+	// It wraps onto a second line rather than run off a narrow window or
+	// out of room at a large text size.
+	return skald.wrap_row(
 		skald.segmented(ctx, CENTER_LABELS[:], int(s.center), center_chosen),
-		skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, width = 360),
+		skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, width = 360 * components.ui_scale(th)),
 		search_box(s, ctx),
 		search_results(s, ctx),
 		filters_control(s, ctx),
 		spacing = th.spacing.md,
-		cross_align = .Center,
+		line_spacing = th.spacing.sm,
 	)
 }
 

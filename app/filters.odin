@@ -7,25 +7,19 @@ package app
 
 import "../clarity"
 import "../components"
+import "../settings"
 import "../validation"
 
 /*
  Which findings the screens show: a set of severities and a set of review
- states. The room graph's outlines, the area map's outlines and the area
- inspector's counts all follow them. Plain values, so settings can keep
- them later.
+ states (settings.Filters, so they are remembered with the settings). The
+ room graph's outlines, the area map's outlines and the area inspector's
+ counts all follow them.
 */
-Filters :: struct {
-	severities: bit_set[validation.Severity],
-	states:     bit_set[clarity.State],
-}
+Filters :: settings.Filters
 
-// Everything but accepted findings: accepted means "intended", so they
-// are hidden until asked for.
-DEFAULT_FILTERS :: Filters {
-	severities = {.Error, .Warning, .Info},
-	states     = {.Open, .Flagged, .Needs_Review},
-}
+// Everything but accepted findings (see settings.DEFAULT_FILTERS).
+DEFAULT_FILTERS :: settings.DEFAULT_FILTERS
 
 // Whether `f` is shown under `filters`.
 shows :: proc(filters: Filters, f: clarity.Reviewed_Finding) -> bool {

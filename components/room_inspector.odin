@@ -129,7 +129,7 @@ exit_row :: proc(ctx: ^skald.Ctx($Msg), e: Inspector_Exit, on_follow: proc(targe
 		append(&lines, caption(ctx, door))
 	}
 	return skald.row(
-		skald.col(direction, width = 48),
+		skald.col(direction, width = 48 * ui_scale(th)),
 		skald.col(..lines[:]),
 		spacing = th.spacing.sm,
 	)
