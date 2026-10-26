@@ -976,6 +976,9 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   click away deselecting while a drag doesn't, the keys listed in Help,
   `pan_distance`, and `room_nearest_middle` per level; the area map's
   keys listed, and `area_in_direction` (cone, side, nothing that way).
+- Regions (`regions_test`): F6 and Shift+F6 going round in both
+  directions, from no focus and from the search box, and the map region
+  following the Rooms/Areas switch.
 - Keys (`keys_test`): every chord the app registers is in the table,
   every binding has keys and an action and every scope has bindings,
   `chord_text` for the platform, and Help and Settings taking turns.
