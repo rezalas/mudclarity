@@ -15,10 +15,10 @@ import "../testkit"
 
 @(private = "file")
 CUSTOM :: Settings {
-	theme     = .Dark,
-	text_size = .Larger,
-	palette   = .Colour_Blind,
-	filters   = {severities = {.Error}, states = {.Open, .Accepted}},
+	theme      = .Dark,
+	text_scale = 150,
+	palette    = .Colour_Blind,
+	filters    = {severities = {.Error}, states = {.Open, .Accepted}},
 }
 
 @(private = "file")
@@ -56,7 +56,7 @@ test_bad_values_reset_only_that_setting :: proc(t: ^testing.T) {
 		"filters": {"severities": ["error", "loud"], "states": ["open"]}}`)
 	testing.expect_value(t, l.status, Load_Status.Read)
 	testing.expect_value(t, l.settings.theme, DEFAULTS.theme)
-	testing.expect_value(t, l.settings.text_size, Text_Size.Large)
+	testing.expect_value(t, l.settings.text_scale, 125) // The old name "large"
 	testing.expect_value(t, l.settings.palette, DEFAULTS.palette)
 	testing.expect_value(t, l.settings.filters, DEFAULT_FILTERS)
 	for key in ([]string{"theme", "palette", "filters"}) {
@@ -171,4 +171,38 @@ test_destroy_frees_what_load_allocated :: proc(t: ^testing.T) {
 	testing.expect_value(t, l.original, "")
 	bad := parse(transmute([]u8)string("nope"))
 	destroy(&bad)
+}
+
+@(test)
+test_text_scale_is_kept_in_range_and_on_steps :: proc(t: ^testing.T) {
+	cases := [?]struct {
+		raw:  string,
+		want: int,
+	}{{"115", 115}, {"117", 115}, {"118", 120}, {"10", MIN_TEXT_SCALE}, {"900", MAX_TEXT_SCALE}, {"-5", MIN_TEXT_SCALE}, {"99999999999", MAX_TEXT_SCALE}}
+	for c in cases {
+		l := read(strings.concatenate({`{"format": "mudclarity-settings", "version": 1, "text_scale": `, c.raw, "}"}, context.temp_allocator))
+		testing.expectf(t, l.settings.text_scale == c.want, "%s read as %d, want %d", c.raw, l.settings.text_scale, c.want)
+		testing.expect_value(t, l.warning, "")
+	}
+	l := read(`{"format": "mudclarity-settings", "version": 1, "text_scale": "big"}`)
+	testing.expect_value(t, l.settings.text_scale, DEFAULT_TEXT_SCALE)
+	testing.expect(t, strings.contains(l.warning, "text_scale"))
+}
+
+@(test)
+test_old_text_size_names_are_read_and_replaced :: proc(t: ^testing.T) {
+	for legacy in LEGACY_TEXT_SIZES {
+		l := read(strings.concatenate({`{"format": "mudclarity-settings", "version": 1, "text_size": "`, legacy.name, `"}`}, context.temp_allocator))
+		testing.expectf(t, l.settings.text_scale == legacy.percent, "%s read as %d", legacy.name, l.settings.text_scale)
+		// Saving writes the percentage and drops the old key.
+		text := encode(l.settings, l.original)
+		testing.expect(t, !strings.contains(text, "text_size"))
+		testing.expect_value(t, read(text).settings.text_scale, legacy.percent)
+	}
+	// The new key wins when both are there; an unknown old name is reported.
+	l := read(`{"format": "mudclarity-settings", "version": 1, "text_size": "largest", "text_scale": 110}`)
+	testing.expect_value(t, l.settings.text_scale, 110)
+	l = read(`{"format": "mudclarity-settings", "version": 1, "text_size": "huge"}`)
+	testing.expect_value(t, l.settings.text_scale, DEFAULT_TEXT_SCALE)
+	testing.expect(t, strings.contains(l.warning, "text_size"))
 }

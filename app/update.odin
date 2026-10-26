@@ -191,10 +191,27 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		next.theme = v.theme
 		return change_settings(&out, next)
 
-	case Text_Size_Chosen:
+	case Palette_Chosen:
 		next := out.settings
-		next.text_size = v.size
+		next.palette = v.palette
 		return change_settings(&out, next)
+
+	case Text_Scale_Chosen:
+		out.text_scale_draft = 0
+		next := out.settings
+		next.text_scale = settings.clamp_text_scale(v.percent)
+		if next.text_scale != out.settings.text_scale {
+			// The canvases change size with the text: fit them again.
+			out.graph.needs_fit = true
+			out.area_map.needs_fit = true
+		}
+		return change_settings(&out, next)
+
+	case Text_Scale_Dragged:
+		out.text_scale_draft = settings.clamp_text_scale(v.percent)
+		// The view applies it once the mouse is up; make sure a frame
+		// follows to see that (an arrow key has no release to wait for).
+		return out, Redraw_Soon{}
 
 	case Settings_Saved:
 		defer delete(v.error, runtime.heap_allocator())

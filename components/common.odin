@@ -7,6 +7,8 @@ package components
 
 import "gui:skald"
 
+import "../validation"
+
 /*
  Small widgets shared by screens and components. They are generic over the
  caller's Msg type, so any screen can use them without map_msg. Text passed
@@ -81,4 +83,18 @@ BASE_FONT_SIZE :: f32(14)
 // and heights, and text drawn on canvases, are multiplied by it.
 ui_scale :: proc(th: ^skald.Theme) -> f32 {
 	return th.font.size_md / BASE_FONT_SIZE if th.font.size_md > 0 else 1
+}
+
+// The colour that stands for a severity: the theme's danger and warning
+// colours (which the colour-blind palette replaces) and muted text for
+// info. Everything that shows a severity by colour goes through here.
+severity_color :: proc(colors: skald.Theme_Colors, severity: validation.Severity) -> skald.Color {
+	switch severity {
+	case .Error:
+		return colors.danger
+	case .Warning:
+		return colors.warning
+	case .Info:
+	}
+	return colors.fg_muted
 }

@@ -454,14 +454,17 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   "filters": {"severities": ["error", "warning", "info"], "states": ["open", "flagged", "needs_review"]},
   "format": "mudclarity-settings",
   "palette": "standard",
-  "text_size": "default",
+  "text_scale": 100,
   "theme": "system",
   "version": 1
 }
 ```
 
-- Values are written as names, not numbers, so the file reads well and
-  survives reordering an enum.
+- Choices are written as names, not numbers, so the file reads well and
+  survives reordering an enum. `text_scale` is a percentage (75 to 200,
+  in steps of 5; anything else is brought into range). The first files
+  had a named `text_size` ("small" ... "largest"); it is read as the
+  percentage it stood for and dropped on the next save.
 - It is untrusted input, and reading it never fails: a missing file gives
   the defaults; an unreadable one (too large, not JSON, wrong format) gives
   the defaults and a warning for a banner, and is kept as
@@ -487,9 +490,19 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   macOS). Changes apply at once, so it has only Close (or Escape). It says
   where the file is. Theme: follow the system, light, dark (with a chosen
   theme, the OS switching light/dark no longer changes it). Text size:
-  90% to 200% (`settings.TEXT_SCALES`), also Ctrl+= / Ctrl+- / Ctrl+0
-  (Cmd on macOS) anywhere. `theme_for` builds the theme for the settings:
-  the chosen or OS theme through `scaled_theme` (fonts, spacing, radii),
+  a slider from 75% to 200% in 5% steps, with clickable marks every 25%
+  and the value beside it; dragging only shows the value
+  (`text_scale_draft`) and it is applied when the mouse is let go, since
+  restyling mid-drag would move the slider under the pointer. Ctrl+= /
+  Ctrl+- (Cmd on macOS) step it by 10% anywhere and Ctrl+0 resets it; a
+  change refits both canvases. Colours: standard, or colour-blind
+  friendly (`colour_blind` in `theme_for`), which replaces the theme's
+  danger and warning colours so errors and warnings stay apart with
+  protanopia, deuteranopia and tritanopia (picked by simulation; see its
+  comment). Info and the selection are unchanged. `theme_for` builds the theme for the settings:
+  the chosen or OS theme with the app's type sizes (`app_type`: small and
+  body text a step above Skald's 13 and 14 px, since this app is mostly
+  reading), then `scaled_theme` (fonts, spacing, radii),
   also when following an OS light/dark switch. The World toolbar is a
   `wrap_row`, so at large sizes it wraps instead of running off.
 - Testing the GUI by hand changes the settings file: point
@@ -545,10 +558,16 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- **Colours that carry meaning** come from the theme: a severity's
+  colour only through `components.severity_color` (danger, warning,
+  muted text), the selection and accents from `primary`. Never hard-code
+  them: the colour-blind palette is a change of theme colours, and the
+  legend (#34) reads the same values.
 - **Text size.** Fixed widths and heights (panels, popovers, dialogs,
   the picker) are written at the default text size and multiplied by
-  `components.ui_scale(ctx.theme)` (body font size ÷ 14), which follows
-  the Text size setting through the theme; canvases get it as
+  `components.ui_scale(ctx.theme)` (body font size ÷ 14, Skald's own
+  body size, so with `app_type`'s 15 px the panels are a little wider to
+  match), which follows the Text size setting through the theme; canvases get it as
   `text_scale` in their data for labels. A new fixed size must do the
   same, or it won't grow with the text.
 - Odin checks a generic proc's body only where it is instantiated, so a
@@ -837,7 +856,9 @@ Every change needs tests.
   resets only its setting and is named; unreadable files (empty, not JSON,
   wrong root, format or version, too large) give the defaults; unknown
   keys survive a save; newer files are read and refused for saving;
-  saving creates the folder; an unreadable file is backed up once.
+  saving creates the folder; an unreadable file is backed up once;
+  `text_scale` is clamped onto steps and a non-number reported; old
+  `text_size` names are read as percentages and dropped on save.
 
 Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 `write_world`, ...) live in `testkit/`; a suite's own helpers stay in its
@@ -878,10 +899,16 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   nothing), only a followed system theme tracking the OS, `theme_for`,
   `save_settings` (written, newer file left alone, no store or folder),
   and a failed save shown.
-- Text size (`text_size_test`, `components/common_test`): `scaled_theme`
-  (fonts, spacing, radii; pills and colours unchanged), `theme_for` and
-  `ui_scale` for every size, `next_text_size` at the ends, choosing a
-  size, and an OS light/dark switch keeping it.
+- Text size (`text_scale_test`, `components/common_test`): `scaled_theme`
+  (fonts, spacing, radii; pills and colours unchanged), `app_type`,
+  `theme_for` and `ui_scale` across the range (and out of it),
+  `next_text_scale` at the ends, choosing a size, dragging (shown, then
+  applied on release, with both canvases refitted), and an OS light/dark
+  switch keeping it.
+- Palette (`palette_test`, `components/common_test`): the colour-blind
+  colours for light and dark backgrounds (nothing else changed),
+  `theme_for` applying them, choosing a palette, and `severity_color`
+  following the theme.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
   request, filters kept across a reload, changes with no world open,

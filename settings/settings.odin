@@ -21,21 +21,17 @@ Theme_Choice :: enum u8 {
 	Dark,
 }
 
-Text_Size :: enum u8 {
-	Small,
-	Default,
-	Large,
-	Larger,
-	Largest,
-}
+// Text size, as a percentage that scales the theme's fonts and spacing:
+// MIN_TEXT_SCALE to MAX_TEXT_SCALE in steps of TEXT_SCALE_STEP.
+MIN_TEXT_SCALE :: 75
+MAX_TEXT_SCALE :: 200
+TEXT_SCALE_STEP :: 5
+DEFAULT_TEXT_SCALE :: 100
 
-// How much each text size scales the theme's fonts and spacing.
-TEXT_SCALES := [Text_Size]f32 {
-	.Small   = 0.9,
-	.Default = 1,
-	.Large   = 1.25,
-	.Larger  = 1.5,
-	.Largest = 2,
+// `percent` brought into range and onto a step.
+clamp_text_scale :: proc(percent: int) -> int {
+	p := clamp(percent, MIN_TEXT_SCALE, MAX_TEXT_SCALE)
+	return (p + TEXT_SCALE_STEP / 2) / TEXT_SCALE_STEP * TEXT_SCALE_STEP
 }
 
 Palette_Choice :: enum u8 {
@@ -57,17 +53,17 @@ DEFAULT_FILTERS :: Filters {
 }
 
 Settings :: struct {
-	theme:     Theme_Choice,
-	text_size: Text_Size,
-	palette:   Palette_Choice,
+	theme:      Theme_Choice,
+	text_scale: int, // Percent; see clamp_text_scale
+	palette:    Palette_Choice,
 	filters:   Filters,
 }
 
 DEFAULTS :: Settings {
-	theme     = .System,
-	text_size = .Default,
-	palette   = .Standard,
-	filters   = DEFAULT_FILTERS,
+	theme      = .System,
+	text_scale = DEFAULT_TEXT_SCALE,
+	palette    = .Standard,
+	filters    = DEFAULT_FILTERS,
 }
 
 // How each value is written in the file. Names, not numbers, so the file
@@ -78,13 +74,12 @@ THEME_NAMES := [Theme_Choice]string {
 	.Dark   = "dark",
 }
 
-TEXT_SIZE_NAMES := [Text_Size]string {
-	.Small   = "small",
-	.Default = "default",
-	.Large   = "large",
-	.Larger  = "larger",
-	.Largest = "largest",
-}
+// The named text sizes the first settings files used ("text_size"),
+// read as the percentages they stood for.
+LEGACY_TEXT_SIZES := [?]struct {
+	name:    string,
+	percent: int,
+}{{"small", 90}, {"default", 100}, {"large", 125}, {"larger", 150}, {"largest", 200}}
 
 PALETTE_NAMES := [Palette_Choice]string {
 	.Standard     = "standard",

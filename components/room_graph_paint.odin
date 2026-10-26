@@ -66,11 +66,8 @@ paint_room :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter, origin: [2]f32,
 
 	outline, width := c.border, f32(1)
 	if mark := d.marks[room]; mark.has_finding {
-		switch mark.worst {
-		case .Error: outline, width = c.danger, 2
-		case .Warning: outline, width = c.warning, 2
-		case .Info: outline, width = c.fg_muted, 1.5
-		}
+		outline = severity_color(c, mark.worst)
+		width = 1.5 if mark.worst == .Info else 2
 	}
 	if room == d.selected {
 		outline, width = c.primary, 3

@@ -87,10 +87,11 @@ paint_node :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter, origin: [2]f32, a
 	skald.draw_circle(p.r, centre, r, fill, true)
 	outline, width := c.border, f32(1.5)
 	if mark := d.marks[area]; mark.has_finding {
+		outline = severity_color(c, mark.worst)
 		switch mark.worst {
-		case .Error: outline, width = c.danger, 2.5
-		case .Warning: outline, width = c.warning, 2
-		case .Info: outline, width = c.fg_muted, 1.5
+		case .Error: width = 2.5
+		case .Warning: width = 2
+		case .Info: width = 1.5
 		}
 	}
 	ring(p, centre, r, width, outline)
