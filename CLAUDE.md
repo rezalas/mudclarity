@@ -868,7 +868,9 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   and a failed save shown.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
-  request, filters kept across a reload, and changes with no world open.
+  request, filters kept across a reload, changes with no world open,
+  filter changes saved as settings (and no-op changes not), and saved
+  filters marking a newly loaded world.
 - Room search (`search_test`): ranking (vnum, exact, prefix, contains),
   `#` and spaces, duplicate vnums across areas, the limit and total, blank
   queries, Latin-1 names and picker order in the index, and searching and
