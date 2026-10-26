@@ -878,6 +878,10 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   nothing), only a followed system theme tracking the OS, `theme_for`,
   `save_settings` (written, newer file left alone, no store or folder),
   and a failed save shown.
+- Text size (`text_size_test`, `components/common_test`): `scaled_theme`
+  (fonts, spacing, radii; pills and colours unchanged), `theme_for` and
+  `ui_scale` for every size, `next_text_size` at the ends, choosing a
+  size, and an OS light/dark switch keeping it.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
   request, filters kept across a reload, changes with no world open,
