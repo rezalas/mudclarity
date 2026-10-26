@@ -36,6 +36,8 @@ mudclarity/
 │   ├── inspector_data.odin  # Resolve the selected room's exits and findings for the inspector
 │   ├── area_inspector_data.odin # The shown area's header, open findings and notes
 │   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
+│   ├── search.odin          # Room search: the index and ranked matching
+│   ├── search_view.odin     # The search box and its results popover
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
 │   ├── welcome_view.odin    # Screens, one file each
@@ -455,7 +457,7 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 - **Screens**: Welcome (open an `area.lst` or drop files; recent files are planned) and
   World: a header (the world's name, its folder cut short with "…" so
   Close stays in the window, Close), summary counts, a toolbar
-  (Rooms/Areas switch, area picker; search and filters planned) over the
+  (Rooms/Areas switch, area picker, room search; filters planned) over the
   inspector (left), room graph or area map with their zoom buttons
   (center) and findings log (right, planned). Review actions (accept,
   flag, reopen, issue) are planned as dialogs.
@@ -566,6 +568,24 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
   no `Ctx`); `draw_text` takes the *baseline*, and its `size` is the cap
   height.
+
+### Room search
+
+- The toolbar's search box finds rooms across the world by vnum (`3001`,
+  `#3001`) or name, ignoring case. `World.search_index` (picker order,
+  lower-cased display names) is built once per load; `step` searches it
+  when the query changes (`set_search`), never `view` (~0.2 ms for the
+  whole world). Ranked: the vnum in every area that defines it, then names
+  equal to the query, starting with it, and containing it. The best
+  `SEARCH_LIMIT` show in a popover with a count of the rest.
+- Choosing a result goes to the room (`go_to_room`, shared with following
+  an exit): switch to the room graph and to the room's area, select it,
+  centre on it. Escape or the clear button empties the box; a new world
+  or Close clears it.
+- The popover publishes its rect (`widget_stamp_overlay_rect`), and the
+  canvases ignore presses under any open popover (`mouse_over_overlay` in
+  `canvas_gestures`), so a click on a result (or a dropdown entry) never
+  also lands on the map beneath.
 
 ### Area map
 

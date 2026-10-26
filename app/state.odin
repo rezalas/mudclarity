@@ -33,6 +33,9 @@ State :: struct {
 	center:        Center_View,
 	area_map:      components.Area_Map_State,
 	note_draft:    string, // The note being written about the area shown
+	search:        string, // The room search box
+	search_hits:   []Room_Ref, // Its best matches (owned; see set_search)
+	search_total:  int,        // How many rooms matched in all
 	generation:    int,    // Bumped by every load; older results are dropped
 	loading_path:  string, // What is loading, or ""
 	error:         string, // The last error to show, or ""
@@ -48,6 +51,17 @@ show_area :: proc(s: ^State, area: int) {
 	s.selected_room = -1
 	s.graph = components.room_graph_init()
 	set_text(&s.note_draft, "") // A draft is about the area it was written for
+}
+
+// Set the room search query and its results. The results are owned by
+// the state and replaced (or freed, with "") here.
+set_search :: proc(s: ^State, query: string) {
+	set_text(&s.search, query)
+	delete(s.search_hits)
+	s.search_hits, s.search_total = nil, 0
+	if s.world != nil {
+		s.search_hits, s.search_total = search_rooms(s.world.search_index, s.search, SEARCH_LIMIT)
+	}
 }
 
 // Whether a load is in progress.

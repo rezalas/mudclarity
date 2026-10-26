@@ -18,6 +18,8 @@ Msg :: union {
 	Graph,
 	Center_Chosen,
 	Area_Map,
+	Search_Changed,
+	Search_Chosen,
 	Note_Draft_Changed,
 	Note_Added,
 	Review_Saved,
@@ -68,6 +70,16 @@ Center_Chosen :: struct {
 // A message from the area map component.
 Area_Map :: struct {
 	msg: components.Area_Map_Msg,
+}
+
+// The room search box changed (text in the frame arena).
+Search_Changed :: struct {
+	text: string,
+}
+
+// A room search result was chosen.
+Search_Chosen :: struct {
+	room: Room_Ref,
 }
 
 // The area inspector's note box changed (text in the frame arena).

@@ -34,6 +34,7 @@ World :: struct {
 	findings:      []clarity.Reviewed_Finding, // This run's findings, merged with the review file
 	room_findings: [][][]int,                // [area][room]: indexes into findings (ROOM_CHECKS only)
 	area_map:      components.Area_Map_Data, // The map of areas (world_map.odin); state and current are the view's
+	search_index:  []Search_Entry,           // Every room, for room search (search.odin)
 	summary:       Summary,
 	arena:         virtual.Arena,
 }
@@ -92,6 +93,7 @@ world_open :: proc(paths: []string) -> (world: ^World, error: string) {
 	index_room_findings(world, allocator)
 	mark_rooms(world)
 	build_area_map(world, allocator)
+	world.search_index = build_search_index(world, allocator)
 	world.summary.severities = validation.count_by_severity(ws.diagnostics)
 	world.summary.state_counts = result.state_counts
 	return world, ""

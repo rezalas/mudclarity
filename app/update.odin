@@ -60,6 +60,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		world_close(out.world)
 		out.world = v.world
+		set_search(&out, "")
 		out.screen = .World
 		out.center = .Rooms
 		out.area_map = components.area_map_init()
@@ -69,6 +70,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 	case Close_World:
 		world_close(out.world)
 		out.world = nil
+		set_search(&out, "")
 		out.screen = .Welcome
 		show_area(&out, 0)
 
@@ -122,6 +124,13 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		m := out.world.area_map
 		out.area_map = components.area_map_update(out.area_map, v.msg, m.positions, m.rooms)
 
+	case Search_Changed:
+		set_search(&out, v.text)
+
+	case Search_Chosen:
+		set_search(&out, "")
+		return out, go_to_room(&out, v.room)
+
 	case Note_Draft_Changed:
 		set_text(&out.note_draft, v.text)
 
@@ -135,14 +144,12 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 
 	case Exit_Followed:
-		// Following an exit shows its room, so it leaves the area map.
-		effect: Effect
-		if out.world != nil && out.center != .Rooms {
-			out.center = .Rooms
-			effect = Redraw_Soon{}
+		if out.world == nil {
+			return out, nil
 		}
-		follow_exit(&out, v.target)
-		return out, effect
+		if ref, ok := out.world.rooms_by_vnum[v.target]; ok {
+			return out, go_to_room(&out, ref)
+		}
 
 	case Dismiss_Error:
 		set_text(&out.error, "")
@@ -158,6 +165,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		set_text(&out.error, "")
 		set_text(&out.loading_path, "")
 		set_text(&out.note_draft, "")
+		set_search(&out, "")
 		return out, Quit{}
 	}
 	return out, nil
@@ -181,21 +189,24 @@ add_area_note :: proc(s: ^State) -> (State, Effect) {
 	return s^, Save_Review{ws}
 }
 
-// Select the room with vnum `target`, switching area if it is in another
-// one, and centre the graph on it. Unknown vnums are ignored.
-follow_exit :: proc(s: ^State, target: int) {
-	if s.world == nil {
-		return
+// Select a room on the room graph, switching area if it is in another
+// one, and centre the graph on it. Coming from the area map needs a frame
+// for the graph's canvas to learn its size.
+go_to_room :: proc(s: ^State, ref: Room_Ref) -> Effect {
+	if s.world == nil || ref.area < 0 || ref.area >= len(s.world.ws.areas) || ref.room < 0 || ref.room >= len(s.world.ws.areas[ref.area].rooms) {
+		return nil
 	}
-	ref, ok := s.world.rooms_by_vnum[target]
-	if !ok {
-		return
+	effect: Effect
+	if s.center != .Rooms {
+		s.center = .Rooms
+		effect = Redraw_Soon{}
 	}
 	if ref.area != s.area {
 		show_area(s, ref.area)
 	}
 	s.selected_room = ref.room
 	s.graph = components.room_graph_update(s.graph, components.Focus_Room{ref.room}, &s.world.layouts[s.area])
+	return effect
 }
 
 // What to open from a set of chosen or dropped paths: the first area.lst
