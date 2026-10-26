@@ -905,6 +905,10 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   `next_text_scale` at the ends, choosing a size, dragging (shown, then
   applied on release, with both canvases refitted), and an OS light/dark
   switch keeping it.
+- Palette (`palette_test`, `components/common_test`): the colour-blind
+  colours for light and dark backgrounds (nothing else changed),
+  `theme_for` applying them, choosing a palette, and `severity_color`
+  following the theme.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
   request, filters kept across a reload, changes with no world open,
