@@ -1030,7 +1030,11 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Painting can be tested without a GPU: a `skald.Renderer` with a
   `Window_Target` and a batch only records vertices (as Skald's
   `draw_vector_test` does; see `markers_test`). Severity markers are
-  checked to draw, to differ in shape, and to stay in their place.
+  checked to draw, to differ in shape, and to stay in their place; the
+  legend (`legend_test`): every swatch listed once with a label, drawing
+  inside its cell, colours equal to the painters' (and following a
+  palette change), small dots drawn round, and the toggle on both maps.
+  The headless renderer helpers are in `components/helpers_test.odin`.
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
   length limits, and every byte value producing valid UTF-8;
   `display_user_text` on UTF-8, invalid and cut-off sequences, controls,
