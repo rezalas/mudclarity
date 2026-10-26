@@ -129,6 +129,7 @@ mudclarity/
 ├── test_data/               # Real and hand-made .are files for tests
 ├── vendor/skald/            # Skald GUI library (git submodule)
 ├── .vscode/                 # Tasks, launch (debug) configs, recommended extensions
+├── .github/                 # CI workflow (ci.yml) and Dependabot config
 ├── ols.json                 # Odin language server: the `gui` collection
 └── CLAUDE.md                # This file
 ```
@@ -830,6 +831,7 @@ wrappers. The examples use `./build.sh`; on Windows use `build.bat` and
 ./build.sh          # Debug build to build/mudclarity
 ./build.sh run [args]   # Build and run (args go to mudclarity)
 ./build.sh test     # Vet, cross-OS type-check, and run tests (see Testing)
+./build.sh test-asan    # GUI-free packages' tests under AddressSanitizer (Linux, macOS)
 ./build.sh debug-tests [name]         # Test binaries for a debugger (see VS Code)
 ./build.sh help     # The build commands
 ./build/mudclarity                    # Open the GUI
@@ -868,6 +870,30 @@ Windows SDK), so Windows is covered when `test` runs there.
   area files (`test_data/`, `*.are`, `*.lst`) are never converted, since
   their bytes and hashes are part of the tests.
 - Text from files is bytes, never assumed UTF-8 (see `display_text`).
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request, using the
+build tool's commands, as on a developer's machine:
+
+- **Linux (test)**: `./build.sh` and `./build.sh test` (vet, cross-OS
+  type checks, every package's tests).
+- **Linux (test-asan)**: `./build.sh test-asan`, the packages that read
+  untrusted files under AddressSanitizer, so an out-of-bounds read or use
+  after free fails. The parser's fuzz tests get a new random seed every
+  run; a failing run's log shows it (`ODIN_TEST_RANDOM_SEED` reproduces).
+- It runs in an `ubuntu:26.04` container, the first LTS with SDL3 in its
+  archive (the GUI's tests link it; no GPU is needed). Odin is the pinned
+  `ODIN_RELEASE`, checked against `ODIN_LINUX_SHA256`: to move to a newer
+  Odin, change both. Actions are pinned to commit SHAs.
+- The corpus tests are skipped (the Riftshadow areas are a separate
+  repository).
+- `.github/dependabot.yml` opens pull requests when an action or the Skald
+  submodule falls behind.
+- There is no Snyk (or CodeQL) job: neither reads Odin, and our only
+  dependency is a submodule, so they would pass without scanning
+  anything. AddressSanitizer and the fuzz tests are the security checks;
+  turn on GitHub's secret scanning in the repository settings.
 
 ### Dependencies
 
@@ -1105,6 +1131,7 @@ and reject entries containing path separators or `..`.
 ### Review Checklist
 
 - [ ] `./build.sh test` (or `build.bat test`) passes: vet, cross-OS checks, tests
+- [ ] CI is green (Linux test and test-asan)
 - [ ] Nothing OS-specific outside `tools/build` (see Cross-platform rules)
 - [ ] New or changed checks are calibrated against the corpus
 - [ ] Follows naming and style conventions
