@@ -41,6 +41,9 @@ mudclarity/
 │   ├── search.odin          # Room search: the index and ranked matching
 │   ├── settings_store.odin  # The settings file at run time; theme_for; save_settings
 │   ├── settings_view.odin   # The Settings dialog, button and shortcut
+│   ├── keys.odin            # Every keyboard shortcut, in one table; chord_text
+│   ├── help_view.odin       # The Help dialog (F1, Ctrl+/, ?), listing the keys
+│   ├── regions.odin         # F6 / Shift+F6: focus the toolbar, inspector or map
 │   ├── search_view.odin     # The search box and its results popover
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
@@ -53,8 +56,10 @@ mudclarity/
 │   ├── graph_camera.odin    # Cells <-> graph <-> screen; zoom at cursor; fit
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
+│   ├── room_graph_keys.odin # The room graph's keys (arrows follow exits)
 │   ├── area_map.odin        # Area map: one circle per area, links between them
 │   ├── area_map_paint.odin  # Painting the area map
+│   ├── area_map_keys.odin   # The area map's keys (arrows pick the nearest area that way)
 │   ├── canvas_gestures.odin # Press, pan and zoom shared by the map canvases
 │   ├── room_inspector.odin  # Room inspector panel (generic over $Msg; see GUI structure)
 │   ├── area_inspector.odin  # Area inspector panel: facts, findings, notes and a note box
@@ -558,6 +563,12 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- **Build a dialog's or popover's content only while it is open.** Skald's
+  `dialog(open = false)` discards its content, but the widgets were still
+  built, so they still handled input, against `last_rect`s that an
+  auto-id may share with a visible widget: a click near the search box
+  once chose a text size in the closed Settings dialog. Return
+  `dialog(ctx, false, spacer(0), ...)` while closed (it restores focus).
 - **Colours that carry meaning** come from the theme: a severity's
   colour only through `components.severity_color` (danger, warning,
   muted text), the selection and accents from `primary`. Never hard-code
@@ -651,6 +662,17 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   read. The hint beside the buttons is cut short with "…" (`hint`), so a
   narrow window never makes the canvas wider than it. Labels follow the
   text size; a vnum label shrinks to fit its box if needed.
+- **Keyboard** (while the canvas has focus: Tab to it, or click it; a
+  ring in the accent colour shows it): arrows follow the selected room's
+  west/north/east/south exit, Page Up/Down its up/down exit (or change
+  level if it has none), reported as `Exit_Key` for `app` to resolve
+  (`follow_exit_key`, across areas too); with nothing selected an arrow
+  selects the room nearest the middle. Shift+arrows pan, `+` `-` zoom
+  about the centre, `0` fits (`canvas_keys`, shared with the area map),
+  Escape deselects (`Room_Deselected`). The list is `ROOM_GRAPH_KEYS`.
+- **Click away**: a press on empty space starts a pan; `pan_distance`
+  sums its travel, and if it ends under `CLICK_SLOP` (4 px) `app` treats
+  it as a click and deselects (#46). A real drag keeps the selection.
 - A newly shown area fits itself once the canvas has a size. Skald redraws
   only on events, so a load returns `Redraw_Soon` to get that frame.
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
@@ -672,6 +694,34 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   the area map and the area inspector's counts all follow it; the room
   inspector still lists every finding of the room, with its state.
 
+### Keyboard
+
+- Everything should work without a mouse (#48). **Every binding is in
+  `key_bindings` (`app/keys.odin`)**, which the Help dialog lists by
+  where it works. Chords the app registers (`SETTINGS_SHORTCUT`,
+  `HELP_SHORTCUTS`, the text size keys) are constants used both to
+  register them and in the table, and `keys_test` checks each registered
+  chord is listed: add a key to both, or the test fails. `chord_text`
+  writes a chord as the platform does (Ctrl, or Cmd on macOS).
+- **Help**: F1, Ctrl+/ (Cmd+/), or `?` outside a text box, plus a Help
+  button beside Settings. Skald only reports typed text while a text box
+  has focus, so `?` is matched as Shift+/ (`HELP_CHARACTER_SHORTCUT`)
+  and, when text does arrive, as the character; neither fires while
+  typing (`skald.is_typing`). One dialog at a time: opening Help closes
+  Settings and the other way round.
+- Shortcuts are registered at the top of `view`, before other widgets,
+  so they win over widgets built later.
+- **F6 / Shift+F6** move focus between the World screen's regions in
+  reading order (`regions.odin`): the toolbar (the area picker; the
+  search box counts as the toolbar), the inspector (its scroll area,
+  which scrolls with the arrow and page keys and leads on to its links
+  with Tab) and the map (whichever canvas is shown). Each shows focus: the
+  canvases draw a ring, and the inspector panel, whose scroll can't, gets
+  an accent border in a margin that is always there. The findings log
+  (#12) will be a fourth region.
+- A component with keys of its own lists them as `Key_Hint`s
+  (`ROOM_GRAPH_KEYS`), and `key_bindings` adds them under their scope.
+
 ### Room search
 
 - The toolbar's search box finds rooms across the world by vnum (`3001`,
@@ -681,6 +731,11 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   whole world). Ranked: the vnum in every area that defines it, then names
   equal to the query, starting with it, and containing it. The best
   `SEARCH_LIMIT` show in a popover with a count of the rest.
+- **Keys**: `/` (when not typing) or Ctrl+F (Cmd+F) jump to the box
+  (`search_shortcuts`, which focuses it directly; `SEARCH_SHORTCUTS`).
+  In the box, Up and Down move a highlight through the results
+  (`search_highlight`, reset by a new query) and Enter chooses it; they
+  are taken from `keys_pressed` before the text box sees them.
 - Choosing a result goes to the room (`go_to_room`, shared with following
   an exit): switch to the room graph and to the room's area, select it,
   centre on it. Escape or the clear button empties the box; a new world
@@ -716,6 +771,12 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   dropped when another area is shown.
 - Notes are UTF-8 typed by the user (or edited by hand), so they are drawn
   through `display_user_text`, not `display_text` (which is for Latin-1).
+- **Keyboard** (canvas focused, with the same ring as the room graph):
+  arrows select the nearest area that way (`area_in_direction`: within
+  45°, else anywhere on that side), sent as `Area_Clicked`, and pan it to
+  the middle if it is off screen or at the edge; Enter opens it
+  (`Area_Opened`); Shift+arrows, `+` `-` `0` as on the room graph. The
+  list is `AREA_MAP_KEYS`.
 - `World.area_map` (`app/world_map.odin`) is built once per load; the view
   only fills in the camera and the current area. Positions come from
   `layout.force_layout`, which lays out each connected group on its own and
@@ -909,6 +970,18 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   colours for light and dark backgrounds (nothing else changed),
   `theme_for` applying them, choosing a palette, and `severity_color`
   following the theme.
+- Room keys (`room_keys_test`, `room_graph_test`): arrows following
+  exits (staying put without one), up/down changing level, into another
+  area and back, Page keys changing level without an exit, Escape and a
+  click away deselecting while a drag doesn't, the keys listed in Help,
+  `pan_distance`, and `room_nearest_middle` per level; the area map's
+  keys listed, and `area_in_direction` (cone, side, nothing that way).
+- Regions (`regions_test`): F6 and Shift+F6 going round in both
+  directions, from no focus and from the search box, and the map region
+  following the Rooms/Areas switch.
+- Keys (`keys_test`): every chord the app registers is in the table,
+  every binding has keys and an action and every scope has bindings,
+  `chord_text` for the platform, and Help and Settings taking turns.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
   request, filters kept across a reload, changes with no world open,
@@ -918,7 +991,8 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   `#` and spaces, duplicate vnums across areas, the limit and total, blank
   queries, Latin-1 names and picker order in the index, and searching and
   choosing a result in `step` (from the map, out of range, cleared by a
-  reload).
+  reload), and the highlight (kept within the results, reset by a new
+  query).
 - Corpus test (`app/corpus_test`) opens the whole world as the loading
   thread does (< 3 s), times the area map on its own (< 250 ms) and a
   one-letter search over every room (< 10 ms).

@@ -9,11 +9,12 @@ import "gui:skald"
 
 /*
  Pointer gestures over a map canvas, shared by the room graph and the area
- map: a press sends `on_press` (the caller's hit-test result, or
- Pan_Started over empty space), dragging while panning sends Panned,
- releasing sends Pan_Ended, and the wheel zooms at the pointer. `last` is
- the canvas's rect from the previous frame; nothing is sent before it has
- one. The message types are the room graph's (room_graph.odin).
+ map: a press focuses the canvas and sends `on_press` (the caller's
+ hit-test result, or Pan_Started over empty space), dragging while
+ panning sends Panned, releasing sends Pan_Ended, and the wheel zooms at
+ the pointer. `last` is the canvas's rect from the previous frame;
+ nothing is sent before it has one. The message types are the room
+ graph's (room_graph.odin). canvas_keys is the keyboard's share.
 */
 canvas_gestures :: proc(ctx: ^skald.Ctx($Msg), id: skald.Widget_ID, last: skald.Rect, is_panning: bool, on_press: Msg) {
 	if last.w <= 0 {
@@ -24,6 +25,7 @@ canvas_gestures :: proc(ctx: ^skald.Ctx($Msg), id: skald.Widget_ID, last: skald.
 	// it must not also reach the canvas.
 	is_over := skald.widget_hovered(ctx, id) && !skald.mouse_over_overlay(ctx)
 	if is_over && input.mouse_pressed[.Left] {
+		skald.widget_focus(ctx, id) // So the canvas's keys work after a click
 		skald.send(ctx, on_press)
 	}
 	if is_panning {
@@ -68,4 +70,34 @@ zoom_buttons :: proc(ctx: ^skald.Ctx($Msg), last: skald.Rect, zoom: f32) -> skal
 hint :: proc(ctx: ^skald.Ctx($Msg), text: string) -> skald.View {
 	th := ctx.theme
 	return skald.flex(1, skald.text(text, th.color.fg_muted, th.font.size_md, overflow = .Ellipsis))
+}
+
+// A press released within this many pixels of travel is a click, not a
+// pan (see Room_Graph_State.pan_distance).
+CLICK_SLOP :: f32(4)
+
+// How far Shift+arrow pans, in screen pixels.
+PAN_KEY_STEP :: f32(80)
+
+// Keys every map canvas shares while it has focus (the caller checks):
+// Shift+arrows pan, + and - zoom about the centre, 0 fits. `last` is the
+// canvas's rect from the previous frame.
+canvas_keys :: proc(ctx: ^skald.Ctx($Msg), last: skald.Rect) {
+	keys, mods := ctx.input.keys_pressed, ctx.input.modifiers
+	centre := [2]f32{last.w, last.h} / 2
+	if mods == {.Shift} {
+		// The view moves the way the arrow points, so the map moves back.
+		step := PAN_KEY_STEP * ui_scale(ctx.theme)
+		if .Left in keys do skald.send(ctx, Msg(Panned{{step, 0}}))
+		if .Right in keys do skald.send(ctx, Msg(Panned{{-step, 0}}))
+		if .Up in keys do skald.send(ctx, Msg(Panned{{0, step}}))
+		if .Down in keys do skald.send(ctx, Msg(Panned{{0, -step}}))
+	}
+	if .Equals in keys && (mods == {} || mods == {.Shift}) { // = or +
+		skald.send(ctx, Msg(Zoomed{ZOOM_STEP, centre}))
+	}
+	if mods == {} {
+		if .Minus in keys do skald.send(ctx, Msg(Zoomed{1 / ZOOM_STEP, centre}))
+		if .N0 in keys do skald.send(ctx, Msg(Fitted{{last.w, last.h}}))
+	}
 }

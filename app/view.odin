@@ -19,8 +19,13 @@ startup_paths: []string
 view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	request_startup_paths(s, ctx)
 	th := ctx.theme
-	if !s.settings_open {
+	if !s.settings_open && !s.help_open {
 		skald.shortcut(ctx, SETTINGS_SHORTCUT, Msg(Settings_Shown{true}))
+	}
+	help_shortcuts(s, ctx)
+	if s.screen == .World && s.world != nil && !s.settings_open && !s.help_open {
+		search_shortcuts(ctx)
+		region_shortcuts(s, ctx)
 	}
 	text_scale_shortcuts(s, ctx)
 
@@ -32,7 +37,7 @@ view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		append(&children, components.banner(ctx, .Warning, components.display_text(s.warning), Msg(Dismiss_Warning{})))
 	}
 	body := world_view(s, ctx) if s.screen == .World && s.world != nil else welcome_view(s, ctx)
-	append(&children, skald.flex(1, body), settings_dialog(s, ctx))
+	append(&children, skald.flex(1, body), settings_dialog(s, ctx), help_dialog(s, ctx))
 
 	page := skald.col(..children[:], spacing = th.spacing.md, padding = th.spacing.lg, bg = th.color.bg, cross_align = .Stretch)
 	return skald.drop_zone(ctx, page, files_dropped)

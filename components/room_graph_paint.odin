@@ -49,6 +49,16 @@ paint_room_graph :: proc(d: ^Room_Graph_Data, p: skald.Canvas_Painter) {
 			paint_room(d, p, origin, i)
 		}
 	}
+	if d.is_focused {
+		paint_focus_ring(p, c.primary)
+	}
+}
+
+// The keyboard focus ring: an outline just inside the canvas, so it is
+// clear when the keys act on the map.
+paint_focus_ring :: proc(p: skald.Canvas_Painter, color: skald.Color) {
+	b := p.bounds
+	skald.draw_rect_outline(p.r, {b.x + 1, b.y + 1, b.w - 2, b.h - 2}, 2, color, 4, true)
 }
 
 @(private = "file")

@@ -40,7 +40,7 @@ welcome_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		radius = th.radius.lg,
 	)
 	return skald.col(
-		skald.row(skald.flex(1, skald.spacer(0)), settings_button(ctx)),
+		skald.row(skald.flex(1, skald.spacer(0)), help_button(ctx), settings_button(ctx), spacing = th.spacing.sm),
 		skald.flex(1, skald.col(card, main_align = .Center, cross_align = .Center)),
 		cross_align = .Stretch,
 	)

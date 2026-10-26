@@ -7,6 +7,8 @@ package components
 
 import "core:testing"
 
+import "gui:skald"
+
 import "../layout"
 import "../models"
 
@@ -116,4 +118,46 @@ test_graph_focus_on_room :: proc(t: ^testing.T) {
 	testing.expect_value(t, to_screen(s.camera, {}, cell_center(l.rooms[1].cell)), [2]f32{400, 300})
 	// Out of range: ignored.
 	testing.expect_value(t, room_graph_update(s, Focus_Room{99}, &l), s)
+}
+
+@(test)
+test_graph_pan_distance :: proc(t: ^testing.T) {
+	area := three_rooms()
+	l := layout.compute(&area)
+	defer layout.destroy(&l)
+	s := room_graph_update(room_graph_init(), Pan_Started{}, &l)
+	testing.expect_value(t, s.pan_distance, 0)
+	s = room_graph_update(s, Panned{{3, 4}}, &l)
+	s = room_graph_update(s, Panned{{-3, -4}}, &l)
+	testing.expect_value(t, s.pan_distance, f32(10)) // Path travelled, not net
+	s = room_graph_update(s, Pan_Started{}, &l)
+	testing.expect_value(t, s.pan_distance, 0) // Each press starts afresh
+	// Keys are the host's business.
+	testing.expect_value(t, room_graph_update(s, Exit_Key{.North}, &l), s)
+	testing.expect_value(t, room_graph_update(s, Room_Deselected{}, &l), s)
+}
+
+@(test)
+test_room_nearest_middle :: proc(t: ^testing.T) {
+	area := three_rooms()
+	l := layout.compute(&area)
+	defer layout.destroy(&l)
+	d := Room_Graph_Data {
+		state  = room_graph_init(),
+		area   = &area,
+		layout = &l,
+	}
+	// The canvas's middle over room 101 (one cell east of 100).
+	canvas := skald.Rect{0, 0, 400, 300}
+	d.state.camera = Camera{pan = {200 - CELL_SIZE, 150}, zoom = 1}
+	room, ok := room_nearest_middle(&d, canvas)
+	testing.expect(t, ok)
+	testing.expect_value(t, room, 1)
+	// Only rooms on the shown level count.
+	d.state.level = 1
+	room, ok = room_nearest_middle(&d, canvas)
+	testing.expect(t, ok && room == 2)
+	d.state.level = 5
+	_, ok = room_nearest_middle(&d, canvas)
+	testing.expect(t, !ok)
 }

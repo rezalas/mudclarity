@@ -6,6 +6,7 @@
 package components
 
 import "core:fmt"
+import "core:math"
 
 import "gui:skald"
 
@@ -34,6 +35,7 @@ Room_Graph_Data :: struct {
 	selected: int, // Room index, or -1
 	colors:   skald.Theme_Colors, // Set by room_graph_view for painting
 	text_scale: f32,              // Likewise: the theme's ui_scale, for labels
+	is_focused: bool,             // Likewise: the canvas has keyboard focus (a ring shows it)
 }
 
 // A room's worst finding that isn't accepted, for colouring it.
@@ -49,6 +51,7 @@ Room_Graph_State :: struct {
 	needs_fit:  bool,   // Fit the level to the canvas once its size is known
 	viewport:   [2]f32, // Canvas size at the last fit; zero until then
 	focus:      int,    // Room to centre on after the pending fit, or -1
+	pan_distance: f32,  // How far the current press has panned; under CLICK_SLOP it was a click
 }
 
 // Zoom used when centring on a room, so its labels can be read.
@@ -63,6 +66,8 @@ Room_Graph_Msg :: union {
 	Level_Changed,
 	Room_Clicked,
 	Focus_Room,
+	Exit_Key,
+	Room_Deselected,
 }
 
 Pan_Started :: struct {}
@@ -91,6 +96,15 @@ Focus_Room :: struct {
 	room: int,
 }
 
+// An arrow key or Page Up/Down asked to follow the selected room's exit
+// in `direction` (room_graph_keys.odin). For the host to resolve.
+Exit_Key :: struct {
+	direction: models.Direction,
+}
+
+// Escape asked to deselect the room. For the host.
+Room_Deselected :: struct {}
+
 // The state for showing an area afresh: level 0 (where placement starts),
 // fitted once the canvas has a size.
 room_graph_init :: proc() -> Room_Graph_State {
@@ -104,8 +118,10 @@ room_graph_update :: proc(s: Room_Graph_State, m: Room_Graph_Msg, l: ^layout.Lay
 	switch v in m {
 	case Pan_Started:
 		out.is_panning = true
+		out.pan_distance = 0
 	case Panned:
 		out.camera.pan += v.delta
+		out.pan_distance += math.sqrt(v.delta.x * v.delta.x + v.delta.y * v.delta.y)
 	case Pan_Ended:
 		out.is_panning = false
 	case Zoomed:
@@ -121,7 +137,7 @@ room_graph_update :: proc(s: Room_Graph_State, m: Room_Graph_Msg, l: ^layout.Lay
 	case Level_Changed:
 		out.level = clamp(v.level, l.min.z, l.max.z)
 		out.needs_fit = true
-	case Room_Clicked:
+	case Room_Clicked, Exit_Key, Room_Deselected:
 	case Focus_Room:
 		if v.room < 0 || v.room >= len(l.rooms) {
 			return out
@@ -185,7 +201,12 @@ room_graph_view :: proc(d: Room_Graph_Data, ctx: ^skald.Ctx(Room_Graph_Msg)) -> 
 	data^ = d
 	data.colors = th.color
 	data.text_scale = ui_scale(th)
+	skald.widget_make_focusable(ctx, id)
+	data.is_focused = skald.widget_has_focus(ctx, id)
 	handle_input(data, ctx, id, last)
+	if data.is_focused && last.w > 0 && !skald.is_typing(ctx) {
+		room_graph_keys(data, ctx, last)
+	}
 
 	controls := make([dynamic]skald.View, context.temp_allocator)
 	if d.layout.max.z > d.layout.min.z {

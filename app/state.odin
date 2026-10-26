@@ -37,6 +37,7 @@ State :: struct {
 	search:        string, // The room search box
 	search_hits:   []Room_Ref, // Its best matches (owned; see set_search)
 	search_total:  int,        // How many rooms matched in all
+	search_highlight: int,     // The result Enter chooses (Up and Down move it)
 	filters_open:  bool,       // The Filters popover is showing (the filters are in settings)
 	generation:    int,    // Bumped by every load; older results are dropped
 	loading_path:  string, // What is loading, or ""
@@ -45,6 +46,7 @@ State :: struct {
 	settings:      settings.Settings,  // The current settings (settings_store.odin)
 	store:         ^Settings_Store,    // Where they are saved; nil saves nothing
 	settings_open: bool,               // The Settings dialog is showing
+	help_open:     bool,               // The Help dialog is showing
 	text_scale_draft: int,             // The text size slider while dragged (percent), or 0
 }
 
@@ -81,6 +83,7 @@ show_area :: proc(s: ^State, area: int) {
 // the state and replaced (or freed, with "") here.
 set_search :: proc(s: ^State, query: string) {
 	set_text(&s.search, query)
+	s.search_highlight = 0
 	delete(s.search_hits)
 	s.search_hits, s.search_total = nil, 0
 	if s.world != nil {

@@ -32,6 +32,9 @@ paint_area_map :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter) {
 	for _, i in d.positions {
 		paint_node(d, p, origin, i)
 	}
+	if d.is_focused {
+		paint_focus_ring(p, c.primary)
+	}
 }
 
 @(private = "file")

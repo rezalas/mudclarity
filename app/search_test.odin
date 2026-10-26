@@ -128,3 +128,28 @@ test_search_in_the_gui :: proc(t: ^testing.T) {
 	testing.expect_value(t, s.search, "")
 	testing.expect_value(t, s.search_total, 0)
 }
+
+@(test)
+test_search_highlight :: proc(t: ^testing.T) {
+	dir := testkit.temp_dir(t, "mudclarity_app_search_highlight")
+	defer os.remove_all(dir)
+	room_b := "#200\nGate~\n~\ncity\nS\n#201\nGatehouse~\n~\ncity\nS\n"
+	list := testkit.write_world(t, dir, testkit.area_text("A", testkit.BASE_ROOMS), testkit.area_text("B", room_b))
+	s := init()
+	s.generation = 1
+	s, _ = step(s, load_now(1, list))
+	defer finish(s)
+	if !testing.expect(t, s.world != nil) do return
+
+	s, _ = step(s, Search_Changed{"gate"}) // Two results
+	testing.expect_value(t, s.search_highlight, 0)
+	s, _ = step(s, Search_Highlighted{1})
+	testing.expect_value(t, s.search_highlight, 1)
+	s, _ = step(s, Search_Highlighted{5})
+	testing.expect_value(t, s.search_highlight, 1) // Kept within the results
+	s, _ = step(s, Search_Highlighted{-2})
+	testing.expect_value(t, s.search_highlight, 0)
+	s, _ = step(s, Search_Highlighted{1})
+	s, _ = step(s, Search_Changed{"gateh"})
+	testing.expect_value(t, s.search_highlight, 0) // A new query starts at the top
+}

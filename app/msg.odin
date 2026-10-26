@@ -23,6 +23,7 @@ Msg :: union {
 	Area_Map,
 	Search_Changed,
 	Search_Chosen,
+	Search_Highlighted,
 	Filters_Shown,
 	Severity_Shown,
 	State_Shown,
@@ -34,6 +35,7 @@ Msg :: union {
 	Dismiss_Error,
 	Dismiss_Warning,
 	Settings_Shown,
+	Help_Shown,
 	Theme_Chosen,
 	Palette_Chosen,
 	Text_Scale_Chosen,
@@ -91,6 +93,11 @@ Search_Changed :: struct {
 	text: string,
 }
 
+// Up or Down in the search box moved the highlight to result `index`.
+Search_Highlighted :: struct {
+	index: int,
+}
+
 // A room search result was chosen.
 Search_Chosen :: struct {
 	room: Room_Ref,
@@ -142,6 +149,11 @@ Dismiss_Warning :: struct {}
 
 // The Settings button, Ctrl+, (Cmd+, on macOS), Close or Escape.
 Settings_Shown :: struct {
+	is_open: bool,
+}
+
+// F1, Ctrl+/ (Cmd+/), "?", Close or Escape.
+Help_Shown :: struct {
 	is_open: bool,
 }
 

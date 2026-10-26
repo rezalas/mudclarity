@@ -98,3 +98,9 @@ severity_color :: proc(colors: skald.Theme_Colors, severity: validation.Severity
 	}
 	return colors.fg_muted
 }
+
+// A key a component handles itself, for the host's list of shortcuts.
+Key_Hint :: struct {
+	keys:   string,
+	action: string,
+}
