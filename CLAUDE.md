@@ -58,6 +58,7 @@ mudclarity/
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
 │   ├── room_graph_keys.odin # The room graph's keys (arrows follow exits)
 │   ├── markers.odin         # Severity markers: cross, triangle, dot
+│   ├── map_style.odin       # Map colours, widths and shapes, shared by painters and legend
 │   ├── area_map.odin        # Area map: one circle per area, links between them
 │   ├── area_map_paint.odin  # Painting the area map
 │   ├── area_map_keys.odin   # The area map's keys (arrows pick the nearest area that way)

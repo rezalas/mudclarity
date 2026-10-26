@@ -53,25 +53,17 @@ paint_link :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter, origin: [2]f32, l
 	start, end := a + dir * ra, b - dir * rb
 	exits := link.exits_ab + link.exits_ba
 	portals := link.portals_ab + link.portals_ba
-	color := d.colors.fg_muted if exits > 0 else d.colors.primary
+	color := link_color(d.colors, exits > 0)
 	width := max(1, (1 + math.log2(f32(exits + portals) + 1)) * camera.zoom)
 	skald.draw_line(p.r, start, end, width, color, true)
 
 	forward := link.exits_ab + link.portals_ab > 0
 	backward := link.exits_ba + link.portals_ba > 0
 	if forward && !backward {
-		paint_head(p, end, dir, camera.zoom, color)
+		paint_arrowhead(p.r, end, dir, max(6, 10 * camera.zoom), color)
 	} else if backward && !forward {
-		paint_head(p, start, -dir, camera.zoom, color)
+		paint_arrowhead(p.r, start, -dir, max(6, 10 * camera.zoom), color)
 	}
-}
-
-@(private = "file")
-paint_head :: proc(p: skald.Canvas_Painter, tip, toward: [2]f32, zoom: f32, color: skald.Color) {
-	size := max(6, 10 * zoom)
-	side := [2]f32{-toward.y, toward.x}
-	back := tip - toward * size
-	skald.draw_polygon(p.r, {tip, back + side * size * 0.5, back - side * size * 0.5}, color, true)
 }
 
 @(private = "file")
@@ -83,27 +75,7 @@ paint_node :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter, origin: [2]f32, a
 	if centre.x + r < p.bounds.x || centre.x - r > p.bounds.x + p.bounds.w || centre.y + r < p.bounds.y || centre.y - r > p.bounds.y + p.bounds.h + 30 {
 		return
 	}
-	fill := c.surface
-	if d.is_unopened[area] {
-		fill[3] *= 0.45
-	}
-	skald.draw_circle(p.r, centre, r, fill, true)
-	outline, width := c.border, f32(1.5)
-	if mark := d.marks[area]; mark.has_finding {
-		outline = severity_color(c, mark.worst)
-		switch mark.worst {
-		case .Error: width = 2.5
-		case .Warning: width = 2
-		case .Info: width = 1.5
-		}
-	}
-	ring(p, centre, r, width, outline)
-	if area == d.current {
-		ring(p, centre, r + 4 * camera.zoom, 2.5, c.primary)
-	}
-	if mark := d.marks[area]; mark.has_finding {
-		paint_area_marker(p.r, centre, r, mark.worst, severity_color(c, mark.worst))
-	}
+	paint_area_circle(p.r, c, centre, r, camera.zoom, d.marks[area], d.is_unopened[area], area == d.current)
 	if camera.zoom >= AREA_LABEL_ZOOM {
 		size := 11 * min(max(camera.zoom, 0.8), 1.5) * d.text_scale
 		name := d.names[area]
@@ -113,14 +85,17 @@ paint_node :: proc(d: ^Area_Map_Data, p: skald.Canvas_Painter, origin: [2]f32, a
 	}
 }
 
-// A circle outline, as a closed polyline.
-@(private = "file")
-ring :: proc(p: skald.Canvas_Painter, centre: [2]f32, r, width: f32, color: skald.Color) {
-	n := clamp(int(r), 16, 96)
-	points := make([][2]f32, n + 1, context.temp_allocator)
-	for i in 0 ..= n {
-		angle := 2 * math.PI * f32(i) / f32(n)
-		points[i] = centre + {math.cos(angle), math.sin(angle)} * r
+// An area's circle: filled (faint if unopened), outlined (area_outline),
+// with its severity marker, and the accent ring when it is the area the
+// room graph shows. Shared with the legend.
+paint_area_circle :: proc(r: ^skald.Renderer, c: skald.Theme_Colors, centre: [2]f32, radius, zoom: f32, mark: Room_Mark, is_unopened, is_current: bool) {
+	skald.draw_circle(r, centre, radius, area_fill(c, is_unopened), true)
+	outline, width := area_outline(c, mark)
+	paint_ring(r, centre, radius, width, outline)
+	if is_current {
+		paint_ring(r, centre, radius + 4 * zoom, 2.5, c.primary)
 	}
-	skald.draw_polyline(p.r, points, width, color, true)
+	if mark.has_finding {
+		paint_area_marker(r, centre, radius, mark.worst, severity_color(c, mark.worst))
+	}
 }
