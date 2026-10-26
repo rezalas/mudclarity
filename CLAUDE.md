@@ -554,6 +554,11 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- **Colours that carry meaning** come from the theme: a severity's
+  colour only through `components.severity_color` (danger, warning,
+  muted text), the selection and accents from `primary`. Never hard-code
+  them: the colour-blind palette is a change of theme colours, and the
+  legend (#34) reads the same values.
 - **Text size.** Fixed widths and heights (panels, popovers, dialogs,
   the picker) are written at the default text size and multiplied by
   `components.ui_scale(ctx.theme)` (body font size ÷ 14, Skald's own

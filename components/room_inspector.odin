@@ -174,12 +174,7 @@ STATE_LABELS := [clarity.State]string {
 finding_row :: proc(ctx: ^skald.Ctx($Msg), f: Inspector_Finding) -> skald.View {
 	th := ctx.theme
 	d := f.diagnostic
-	color := th.color.fg_muted
-	switch d.severity {
-	case .Error: color = th.color.danger
-	case .Warning: color = th.color.warning
-	case .Info:
-	}
+	color := severity_color(th.color, d.severity)
 	title := fmt.tprintf("%v", d.check)
 	if label := STATE_LABELS[f.state]; label != "" {
 		title = fmt.tprintf("%s (%s)", title, label)

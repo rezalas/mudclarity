@@ -120,8 +120,8 @@ stats :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	return skald.row(
 		components.stat(ctx, count(len(s.world.ws.areas)), "areas"),
 		components.stat(ctx, count(sum.rooms), "rooms"),
-		components.stat(ctx, count(sum.severities[.Error]), "errors", th.color.danger),
-		components.stat(ctx, count(sum.severities[.Warning]), "warnings", th.color.warning),
+		components.stat(ctx, count(sum.severities[.Error]), "errors", components.severity_color(th.color, .Error)),
+		components.stat(ctx, count(sum.severities[.Warning]), "warnings", components.severity_color(th.color, .Warning)),
 		components.stat(ctx, count(sum.severities[.Info]), "info"),
 		skald.col(components.caption(ctx, review_line(s)), main_align = .Center),
 		spacing = th.spacing.md,

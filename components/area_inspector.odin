@@ -144,8 +144,8 @@ findings_line :: proc(ctx: ^skald.Ctx($Msg), counts: [validation.Severity]int) -
 		return caption(ctx, "None.")
 	}
 	return skald.row(
-		skald.text(fmt.tprintf("%d errors", counts[.Error]), th.color.danger if counts[.Error] > 0 else th.color.fg_muted, th.font.size_md),
-		skald.text(fmt.tprintf("%d warnings", counts[.Warning]), th.color.warning if counts[.Warning] > 0 else th.color.fg_muted, th.font.size_md),
+		skald.text(fmt.tprintf("%d errors", counts[.Error]), severity_color(th.color, .Error) if counts[.Error] > 0 else th.color.fg_muted, th.font.size_md),
+		skald.text(fmt.tprintf("%d warnings", counts[.Warning]), severity_color(th.color, .Warning) if counts[.Warning] > 0 else th.color.fg_muted, th.font.size_md),
 		skald.text(fmt.tprintf("%d info", counts[.Info]), th.color.fg_muted, th.font.size_md),
 		spacing = th.spacing.md,
 	)
