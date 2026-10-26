@@ -58,6 +58,7 @@ mudclarity/
 │   ├── room_graph_keys.odin # The room graph's keys (arrows follow exits)
 │   ├── area_map.odin        # Area map: one circle per area, links between them
 │   ├── area_map_paint.odin  # Painting the area map
+│   ├── area_map_keys.odin   # The area map's keys (arrows pick the nearest area that way)
 │   ├── canvas_gestures.odin # Press, pan and zoom shared by the map canvases
 │   ├── room_inspector.odin  # Room inspector panel (generic over $Msg; see GUI structure)
 │   ├── area_inspector.odin  # Area inspector panel: facts, findings, notes and a note box
@@ -756,6 +757,12 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   dropped when another area is shown.
 - Notes are UTF-8 typed by the user (or edited by hand), so they are drawn
   through `display_user_text`, not `display_text` (which is for Latin-1).
+- **Keyboard** (canvas focused, with the same ring as the room graph):
+  arrows select the nearest area that way (`area_in_direction`: within
+  45°, else anywhere on that side), sent as `Area_Clicked`, and pan it to
+  the middle if it is off screen or at the edge; Enter opens it
+  (`Area_Opened`); Shift+arrows, `+` `-` `0` as on the room graph. The
+  list is `AREA_MAP_KEYS`.
 - `World.area_map` (`app/world_map.odin`) is built once per load; the view
   only fills in the camera and the current area. Positions come from
   `layout.force_layout`, which lays out each connected group on its own and

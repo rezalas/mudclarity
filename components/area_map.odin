@@ -38,6 +38,7 @@ Area_Map_Data :: struct {
 	current:     int,       // The area the room graph shows
 	colors:      skald.Theme_Colors, // Set by area_map_view for painting
 	text_scale:  f32,                // Likewise: the theme's ui_scale, for labels
+	is_focused:  bool,               // Likewise: the canvas has keyboard focus
 }
 
 Area_Map_State :: struct {
@@ -134,6 +135,11 @@ area_map_view :: proc(d: Area_Map_Data, ctx: ^skald.Ctx(Area_Map_Msg)) -> skald.
 	data^ = d
 	data.colors = th.color
 	data.text_scale = ui_scale(th)
+	skald.widget_make_focusable(ctx, id)
+	data.is_focused = skald.widget_has_focus(ctx, id)
+	if data.is_focused && last.w > 0 && !skald.is_typing(ctx) {
+		area_map_keys(data, ctx, last)
+	}
 	if last.w > 0 {
 		if d.state.needs_fit {
 			skald.send(ctx, Area_Map_Msg(Fitted{{last.w, last.h}}))

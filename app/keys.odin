@@ -26,6 +26,7 @@ Key_Scope :: enum u8 {
 	Dialogs_And_Lists, // Skald's own widget keys
 	Settings,
 	Room_Graph,
+	Area_Map,
 }
 
 KEY_SCOPE_TITLES := [Key_Scope]string {
@@ -33,6 +34,7 @@ KEY_SCOPE_TITLES := [Key_Scope]string {
 	.Dialogs_And_Lists = "Buttons, boxes and lists",
 	.Settings          = "In Settings",
 	.Room_Graph        = "On the room graph (Tab to it, or click it)",
+	.Area_Map          = "On the area map (Tab to it, or click it)",
 }
 
 Key_Binding :: struct {
@@ -77,6 +79,9 @@ key_bindings :: proc() -> []Key_Binding {
 	)
 	for hint in components.ROOM_GRAPH_KEYS {
 		append(&out, Key_Binding{keys = hint.keys, action = hint.action, scope = .Room_Graph})
+	}
+	for hint in components.AREA_MAP_KEYS {
+		append(&out, Key_Binding{keys = hint.keys, action = hint.action, scope = .Area_Map})
 	}
 	return out[:]
 }
