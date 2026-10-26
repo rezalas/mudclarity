@@ -14,6 +14,12 @@ Screen :: enum u8 {
 	World,   // A world is open
 }
 
+// What the World screen shows beside the inspector.
+Center_View :: enum u8 {
+	Rooms, // The chosen area's room graph
+	Areas, // The map of every area
+}
+
 /*
  The whole GUI state. Skald passes it by value, so it holds only plain
  values and pointers; strings are heap-owned and replaced with set_text.
@@ -24,13 +30,15 @@ State :: struct {
 	area:          int,    // The area shown, as an index into world.ws.areas
 	selected_room: int,    // Room index in that area, or -1
 	graph:         components.Room_Graph_State,
+	center:        Center_View,
+	area_map:      components.Area_Map_State,
 	generation:    int,    // Bumped by every load; older results are dropped
 	loading_path:  string, // What is loading, or ""
 	error:         string, // The last error to show, or ""
 }
 
 init :: proc() -> State {
-	return State{selected_room = -1, graph = components.room_graph_init()}
+	return State{selected_room = -1, graph = components.room_graph_init(), area_map = components.area_map_init()}
 }
 
 // Show area `area` of the open world afresh: nothing selected, fitted.

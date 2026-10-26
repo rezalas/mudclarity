@@ -450,8 +450,9 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   components are packed apart. On the corpus (~10k rooms, ~15 ms) about 1%
   of rooms are displaced. Exits to vnum 0 are look-only and never edges.
 - **Screens**: Welcome (open an `area.lst` or drop files; recent files are planned) and
-  World: toolbar (area picker, search, zoom, filters) over room inspector
-  (left), room graph (center) and findings log (right). Review actions
+  World: toolbar (Rooms/Areas switch, area picker, search, zoom, filters)
+  over room inspector (left), room graph or area map (center) and findings
+  log (right). Review actions
   (accept, flag, reopen, note, issue) are dialogs.
 
 ### GUI structure
@@ -553,6 +554,23 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
   no `Ctx`); `draw_text` takes the *baseline*, and its `size` is the cap
   height.
+
+### Area map
+
+- The Rooms/Areas switch in the header (`State.center`) shows the map of
+  every area in place of the room graph; the inspector stays. Each area is
+  a circle sized by its rooms and outlined by its worst finding that isn't
+  accepted (any check, not just room checks); unopened areas are faint and
+  the area the room graph shows has an accent ring. Lines join areas that
+  exits or placed portals connect: thicker for more, accent colour when
+  portals are the only link, an arrowhead when they go one way only.
+- Clicking an area opens its room graph (afresh if it's another area);
+  following an exit in the inspector also goes back to the room graph.
+  The map keeps its camera while hidden; a new world refits it.
+- `World.area_map` (`app/world_map.odin`) is built once per load; the view
+  only fills in the camera and the current area. Positions come from
+  `layout.force_layout`, which lays out each connected group on its own and
+  packs the groups in rows, so areas without links don't drift away.
 
 ## Build & Development
 

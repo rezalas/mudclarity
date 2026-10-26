@@ -60,6 +60,8 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		world_close(out.world)
 		out.world = v.world
 		out.screen = .World
+		out.center = .Rooms
+		out.area_map = components.area_map_init()
 		show_area(&out, first_area_with_rooms(out.world))
 		return out, Redraw_Soon{}
 
@@ -89,8 +91,37 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		out.graph = components.room_graph_update(out.graph, v.msg, &out.world.layouts[out.area])
 
+	case Center_Chosen:
+		if out.world == nil || v.view == out.center {
+			return out, nil
+		}
+		out.center = v.view
+		// The canvas just shown may not have a size to fit to yet.
+		return out, Redraw_Soon{}
+
+	case Area_Map:
+		if out.world == nil {
+			return out, nil
+		}
+		if click, is_click := v.msg.(components.Area_Clicked); is_click {
+			if click.area >= 0 && click.area < len(out.world.ws.areas) && click.area != out.area {
+				show_area(&out, click.area)
+			}
+			out.center = .Rooms
+			return out, Redraw_Soon{}
+		}
+		m := out.world.area_map
+		out.area_map = components.area_map_update(out.area_map, v.msg, m.positions, m.rooms)
+
 	case Exit_Followed:
+		// Following an exit shows its room, so it leaves the area map.
+		effect: Effect
+		if out.world != nil && out.center != .Rooms {
+			out.center = .Rooms
+			effect = Redraw_Soon{}
+		}
 		follow_exit(&out, v.target)
+		return out, effect
 
 	case Dismiss_Error:
 		set_text(&out.error, "")
