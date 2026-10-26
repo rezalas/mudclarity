@@ -32,6 +32,7 @@ mudclarity/
 │   ├── update.odin          # step (pure: State, Msg -> State, Effect) and update
 │   ├── effects.odin         # Effect -> skald.Command; dialog and drop handlers
 │   ├── world.odin           # World: workspace + layouts, marks, labels, room lookup, findings
+│   ├── world_map.odin       # The area map's data: nodes, links between areas, positions
 │   ├── inspector_data.odin  # Resolve the selected room's exits and findings for the inspector
 │   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
 │   ├── loading.odin         # load_world worker (cmd_thread)
@@ -45,6 +46,9 @@ mudclarity/
 │   ├── graph_camera.odin    # Cells <-> graph <-> screen; zoom at cursor; fit
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
+│   ├── area_map.odin        # Area map: one circle per area, links between them
+│   ├── area_map_paint.odin  # Painting the area map
+│   ├── canvas_gestures.odin # Press, pan and zoom shared by the map canvases
 │   ├── room_inspector.odin  # Room inspector panel (generic over $Msg; see GUI structure)
 │   └── *_test.odin
 ├── layout/                  # package layout: room grid placement, no GUI code
@@ -53,6 +57,7 @@ mudclarity/
 │   ├── island.odin          # Grow an island; fit it at the nearest free spot
 │   ├── pack.odin            # Pack components side by side
 │   ├── edges.odin           # Edges (straight/bent/vertical, two-way) and external exits
+│   ├── force.odin           # Force-directed layout for small graphs (the area map)
 │   └── *_test.odin
 ├── cli/                     # package cli: command-line commands
 │   ├── cli.odin             # run(args, output) -> exit code; Output; shared helpers
