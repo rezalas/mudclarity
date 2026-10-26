@@ -18,6 +18,8 @@ import "core:strings"
 
 USAGE :: `usage: build.sh | build.bat [command]
   (none)              Debug build to build/mudclarity
+  release             Optimised build, staged with its licences and README
+                      in build/release/mudclarity/, ready to zip or tar
   run [args...]       Build, then run the app with args
   test                Vet our packages and run every package's tests
   test <name>         Run one test, e.g. formats.test_room_basic_fields
@@ -57,6 +59,10 @@ EXE :: ".exe" when ODIN_OS == .Windows else ""
 
 APP_PATH :: "build/mudclarity" + EXE
 
+// Where `release` stages a package: everything a user needs, and nothing
+// else, so CI only has to archive the folder.
+RELEASE_DIR :: "build/release/mudclarity"
+
 main :: proc() {
 	args := os.args[1:]
 	command := args[0] if len(args) > 0 else ""
@@ -69,6 +75,8 @@ main :: proc() {
 	switch command {
 	case "":
 		build_app()
+	case "release":
+		release()
 	case "run":
 		build_app()
 		command := make([dynamic]string, context.temp_allocator)
@@ -91,6 +99,37 @@ main :: proc() {
 
 build_app :: proc() {
 	odin("build", ".", SKALD_COLLECTION, "-debug", "-out:" + APP_PATH)
+}
+
+// An optimised build (no -debug, so no leak-tracking allocator either)
+// staged in RELEASE_DIR with LICENSE.txt and this OS's README. Windows also
+// gets SDL3.dll, which ships with Odin, and its licence; on Linux, users
+// install SDL3 themselves (the README says so). It stays a console program
+// on Windows: the same executable is the command-line tool.
+release :: proc() {
+	_ = os.remove_all(RELEASE_DIR)
+	if err := os.make_directory_all(RELEASE_DIR); err != nil {
+		fail("could not create %s: %v", RELEASE_DIR, err)
+	}
+	odin("build", ".", SKALD_COLLECTION, "-o:speed", "-out:" + RELEASE_DIR + "/mudclarity" + EXE)
+	copy("LICENSE", RELEASE_DIR + "/LICENSE.txt")
+	when ODIN_OS == .Windows {
+		copy("packaging/README-windows.txt", RELEASE_DIR + "/README.txt")
+		copy(ODIN_ROOT + "vendor/sdl3/SDL3.dll", RELEASE_DIR + "/SDL3.dll")
+		copy(ODIN_ROOT + "vendor/sdl3/LICENSE.txt", RELEASE_DIR + "/LICENSE-SDL3.txt")
+	} else when ODIN_OS == .Linux {
+		copy("packaging/README-linux.txt", RELEASE_DIR + "/README.txt")
+	} else {
+		fail("release packages are made on Windows and Linux (macOS comes later)")
+	}
+	fmt.printfln("staged %s", RELEASE_DIR)
+}
+
+// Copy a file, or stop the build.
+copy :: proc(from, to: string) {
+	if err := os.copy_file(to, from); err != nil {
+		fail("could not copy %s to %s: %v", from, to, err)
+	}
 }
 
 // Vet everything, then run each package's tests; or run the one test `name`.

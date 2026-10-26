@@ -8,17 +8,25 @@
 #   test-asan  the packages that read untrusted area files, under
 #              AddressSanitizer (the parser's fuzz tests get a new random
 #              seed each run; the log shows it, to reproduce a failure)
+#   release    an optimised build staged with its licences and README,
+#              kept as an artifact of the run (Linux and Windows)
 name: CI
 
 on:
   push:
+    branches: ["**"] # Tags run these jobs through the release workflow
   pull_request:
+  # The release workflow runs these same jobs, then publishes what the
+  # Linux and Windows test jobs built.
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # The workflow's name too, so the release workflow's call to these jobs
+  # isn't in the same group as (and cancelled by) anything else.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -71,6 +79,19 @@ jobs:
       - name: Run ${{ matrix.task }}
         run: ./build.sh ${{ matrix.task }}
 
+      - name: Build the release package
+        if: matrix.task == 'test'
+        run: ./build.sh release
+
+      - name: Keep the release package
+        if: matrix.task == 'test'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mudclarity-linux-amd64
+          path: build/release/mudclarity
+          retention-days: 14
+          if-no-files-found: error
+
   windows:
     name: Windows (test)
     runs-on: windows-latest
@@ -99,6 +120,18 @@ jobs:
       - name: Run test
         shell: cmd
         run: build.bat test
+
+      - name: Build the release package
+        shell: cmd
+        run: build.bat release
+
+      - name: Keep the release package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mudclarity-windows-amd64
+          path: build/release/mudclarity
+          retention-days: 14
+          if-no-files-found: error
 
   # No test-asan here: Odin's LLVM asks for an AddressSanitizer runtime
   # check (__asan_version_mismatch_check_v8) that Apple Clang's runtime
