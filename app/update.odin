@@ -10,6 +10,7 @@ import "core:strings"
 
 import "gui:skald"
 
+import "../clarity"
 import "../components"
 import "../workspace"
 
@@ -59,13 +60,18 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		world_close(out.world)
 		out.world = v.world
+		apply_filters(out.world, out.filters)
+		set_search(&out, "")
 		out.screen = .World
+		out.center = .Rooms
+		out.area_map = components.area_map_init()
 		show_area(&out, first_area_with_rooms(out.world))
 		return out, Redraw_Soon{}
 
 	case Close_World:
 		world_close(out.world)
 		out.world = nil
+		set_search(&out, "")
 		out.screen = .Welcome
 		show_area(&out, 0)
 
@@ -89,8 +95,86 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		out.graph = components.room_graph_update(out.graph, v.msg, &out.world.layouts[out.area])
 
+	case Center_Chosen:
+		if out.world == nil || v.view == out.center {
+			return out, nil
+		}
+		out.center = v.view
+		// The canvas just shown may not have a size to fit to yet.
+		return out, Redraw_Soon{}
+
+	case Area_Map:
+		if out.world == nil {
+			return out, nil
+		}
+		#partial switch e in v.msg {
+		case components.Area_Clicked:
+			// Selecting an area is picking it: the ring and the picker
+			// follow, and its rooms are ready behind the switch.
+			if e.area >= 0 && e.area < len(out.world.ws.areas) && e.area != out.area {
+				show_area(&out, e.area)
+			}
+			return out, nil
+		case components.Area_Opened:
+			if e.area >= 0 && e.area < len(out.world.ws.areas) && e.area != out.area {
+				show_area(&out, e.area)
+			}
+			out.center = .Rooms
+			return out, Redraw_Soon{}
+		}
+		m := out.world.area_map
+		out.area_map = components.area_map_update(out.area_map, v.msg, m.positions, m.rooms)
+
+	case Search_Changed:
+		set_search(&out, v.text)
+
+	case Search_Chosen:
+		set_search(&out, "")
+		return out, go_to_room(&out, v.room)
+
+	case Filters_Shown:
+		out.filters_open = v.is_open
+
+	case Severity_Shown:
+		f := out.filters
+		if v.is_shown {
+			f.severities += {v.severity}
+		} else {
+			f.severities -= {v.severity}
+		}
+		set_filters(&out, f)
+
+	case State_Shown:
+		f := out.filters
+		if v.is_shown {
+			f.states += {v.state}
+		} else {
+			f.states -= {v.state}
+		}
+		set_filters(&out, f)
+
+	case Filters_Reset:
+		set_filters(&out, DEFAULT_FILTERS)
+
+	case Note_Draft_Changed:
+		set_text(&out.note_draft, v.text)
+
+	case Note_Added:
+		return add_area_note(&out)
+
+	case Review_Saved:
+		defer delete(v.error, runtime.heap_allocator())
+		if v.error != "" {
+			set_text(&out.error, v.error)
+		}
+
 	case Exit_Followed:
-		follow_exit(&out, v.target)
+		if out.world == nil {
+			return out, nil
+		}
+		if ref, ok := out.world.rooms_by_vnum[v.target]; ok {
+			return out, go_to_room(&out, ref)
+		}
 
 	case Dismiss_Error:
 		set_text(&out.error, "")
@@ -105,26 +189,58 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		out.world = nil
 		set_text(&out.error, "")
 		set_text(&out.loading_path, "")
+		set_text(&out.note_draft, "")
+		set_search(&out, "")
 		return out, Quit{}
 	}
 	return out, nil
 }
 
-// Select the room with vnum `target`, switching area if it is in another
-// one, and centre the graph on it. Unknown vnums are ignored.
-follow_exit :: proc(s: ^State, target: int) {
-	if s.world == nil {
-		return
+// Add the draft as a note on the area shown, in the review document, and
+// ask for the file to be saved. A blank draft adds nothing.
+@(private = "file")
+add_area_note :: proc(s: ^State) -> (State, Effect) {
+	text := strings.trim_space(s.note_draft)
+	if s.world == nil || text == "" {
+		return s^, nil
 	}
-	ref, ok := s.world.rooms_by_vnum[target]
-	if !ok {
-		return
+	ws := s.world.ws
+	err := workspace.add_note(ws, ws.names[s.area], clarity.KIND_AREA, 0, text, workspace.today(context.temp_allocator))
+	if err != nil {
+		set_text(&s.error, workspace.error_message(err, context.temp_allocator))
+		return s^, nil
+	}
+	set_text(&s.note_draft, "")
+	return s^, Save_Review{ws}
+}
+
+// Change the filters and re-mark the open world's rooms and areas.
+@(private = "file")
+set_filters :: proc(s: ^State, filters: Filters) {
+	s.filters = filters
+	if s.world != nil {
+		apply_filters(s.world, filters)
+	}
+}
+
+// Select a room on the room graph, switching area if it is in another
+// one, and centre the graph on it. Coming from the area map needs a frame
+// for the graph's canvas to learn its size.
+go_to_room :: proc(s: ^State, ref: Room_Ref) -> Effect {
+	if s.world == nil || ref.area < 0 || ref.area >= len(s.world.ws.areas) || ref.room < 0 || ref.room >= len(s.world.ws.areas[ref.area].rooms) {
+		return nil
+	}
+	effect: Effect
+	if s.center != .Rooms {
+		s.center = .Rooms
+		effect = Redraw_Soon{}
 	}
 	if ref.area != s.area {
 		show_area(s, ref.area)
 	}
 	s.selected_room = ref.room
 	s.graph = components.room_graph_update(s.graph, components.Focus_Room{ref.room}, &s.world.layouts[s.area])
+	return effect
 }
 
 // What to open from a set of chosen or dropped paths: the first area.lst

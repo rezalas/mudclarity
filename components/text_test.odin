@@ -55,3 +55,42 @@ test_display_text_every_byte_is_valid_utf8 :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, utf8.valid_string(display_text(string(all[:]), keep_newlines = true)))
 }
+
+@(test)
+test_display_user_text_keeps_utf8 :: proc(t: ^testing.T) {
+	testing.expect_value(t, display_user_text("Café — ✓ 龍"), "Café — ✓ 龍")
+	// The same bytes through display_text would be read as Latin-1.
+	testing.expect(t, display_text("Café") != "Café")
+}
+
+@(test)
+test_display_user_text_cleans_bad_input :: proc(t: ^testing.T) {
+	testing.expect_value(t, display_user_text("a\xffb"), "a�b")       // Invalid byte
+	testing.expect_value(t, display_user_text("a\xe2\x9c"), "a��") // Cut-off sequence
+	testing.expect_value(t, display_user_text("a\tb\x00c\u0085d"), "a b c d") // C0 and C1 controls
+	testing.expect_value(t, display_user_text("a\r\nb\rc\nd"), "a b c d")
+	testing.expect_value(t, display_user_text("a\r\nb\rc\nd", keep_newlines = true), "a\nb\nc\nd")
+}
+
+@(test)
+test_display_user_text_cuts_long_input :: proc(t: ^testing.T) {
+	raw := strings.repeat("é", MAX_DISPLAY_INPUT, context.temp_allocator) // Two bytes each
+	text := display_user_text(raw)
+	testing.expect(t, strings.has_suffix(text, "..."))
+	testing.expect(t, len(text) <= MAX_DISPLAY_INPUT + 3)
+	testing.expect(t, utf8.valid_string(text))
+}
+
+@(test)
+test_display_user_text_every_byte_pair_is_valid_utf8 :: proc(t: ^testing.T) {
+	pair: [2]u8
+	for a in 0 ..< 256 {
+		for b in 0 ..< 256 {
+			pair = {u8(a), u8(b)}
+			if !utf8.valid_string(display_user_text(string(pair[:]), keep_newlines = true)) {
+				testing.expectf(t, false, "bytes %x %x", a, b)
+				return
+			}
+		}
+	}
+}

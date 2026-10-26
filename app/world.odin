@@ -33,6 +33,8 @@ World :: struct {
 	rooms_by_vnum: map[int]Room_Ref,         // Every room in the world (first definition wins)
 	findings:      []clarity.Reviewed_Finding, // This run's findings, merged with the review file
 	room_findings: [][][]int,                // [area][room]: indexes into findings (ROOM_CHECKS only)
+	area_map:      components.Area_Map_Data, // The map of areas (world_map.odin); state and current are the view's
+	search_index:  []Search_Entry,           // Every room, for room search (search.odin)
 	summary:       Summary,
 	arena:         virtual.Arena,
 }
@@ -89,7 +91,9 @@ world_open :: proc(paths: []string) -> (world: ^World, error: string) {
 		world.picker_labels[i] = world.labels[area]
 	}
 	index_room_findings(world, allocator)
-	mark_rooms(world)
+	build_area_map(world, allocator)
+	apply_filters(world, DEFAULT_FILTERS)
+	world.search_index = build_search_index(world, allocator)
 	world.summary.severities = validation.count_by_severity(ws.diagnostics)
 	world.summary.state_counts = result.state_counts
 	return world, ""
@@ -160,26 +164,6 @@ index_room_findings :: proc(world: ^World, allocator: runtime.Allocator) {
 			if len(list) > 0 {
 				world.room_findings[i][r] = make([]int, len(list), allocator)
 				copy(world.room_findings[i][r], list[:])
-			}
-		}
-	}
-}
-
-// Mark each room with its worst finding that isn't accepted.
-@(private = "file")
-mark_rooms :: proc(world: ^World) {
-	for rooms, a in world.room_findings {
-		for list, r in rooms {
-			for n in list {
-				f := world.findings[n]
-				if f.state == .Accepted {
-					continue
-				}
-				mark := &world.marks[a][r]
-				// Severity order is Error < Warning < Info: lower is worse.
-				if !mark.has_finding || f.diagnostic.severity < mark.worst {
-					mark^ = {has_finding = true, worst = f.diagnostic.severity}
-				}
 			}
 		}
 	}

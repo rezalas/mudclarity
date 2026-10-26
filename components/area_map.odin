@@ -12,7 +12,8 @@ import "gui:skald"
 /*
  The map of areas: one circle per area (sized by its rooms, outlined by its
  worst open finding), with a line wherever exits or portals lead from one
- area to another. Clicking an area reports Area_Clicked; the host opens it.
+ area to another. Clicking an area reports Area_Clicked (the host selects
+ it) and double-clicking reports Area_Opened (the host shows its rooms).
  Same composed-component pattern and gestures as the room graph; painting
  is in area_map_paint.odin. Positions come from layout.force_layout.
 */
@@ -51,10 +52,17 @@ Area_Map_Msg :: union {
 	Zoomed,
 	Fitted,
 	Area_Clicked,
+	Area_Opened,
 }
 
-// An area was clicked: for the host to open.
+// An area was clicked: for the host to select.
 Area_Clicked :: struct {
+	area: int,
+}
+
+// An area was double-clicked: for the host to open. Its first click has
+// already sent Area_Clicked.
+Area_Opened :: struct {
 	area: int,
 }
 
@@ -83,7 +91,7 @@ area_map_update :: proc(s: Area_Map_State, m: Area_Map_Msg, positions: [][2]f32,
 		lo, hi := map_bounds(positions, rooms)
 		out.camera = fit_bounds(lo, hi, v.size)
 		out.needs_fit = false
-	case Area_Clicked:
+	case Area_Clicked, Area_Opened:
 	}
 	return out
 }
@@ -131,14 +139,17 @@ area_map_view :: proc(d: Area_Map_Data, ctx: ^skald.Ctx(Area_Map_Msg)) -> skald.
 		press := Area_Map_Msg(Pan_Started{})
 		if area, ok := area_at_point(data, canvas_local(ctx, last)); ok {
 			press = Area_Clicked{area}
+			if ctx.input.mouse_click_count[.Left] >= 2 {
+				press = Area_Opened{area}
+			}
 		}
 		canvas_gestures(ctx, id, last, d.state.is_panning, press)
 	}
 	cursor := skald.Cursor_Shape.Move if d.state.is_panning else .Default
 	return skald.col(
 		skald.row(
-			skald.button(ctx, "Fit", Area_Map_Msg(Fitted{{last.w, last.h}}), bg = th.color.surface, fg = th.color.fg),
-			caption(ctx, "Each circle is an area; lines are exits and portals between areas. Click an area to open it."),
+			zoom_buttons(ctx, last, d.state.camera.zoom),
+			hint(ctx, "Each circle is an area; lines are exits and portals between areas. Click an area to see it, double-click to open its rooms."),
 			spacing = th.spacing.sm,
 			cross_align = .Center,
 		),

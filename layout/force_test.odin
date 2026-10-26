@@ -57,3 +57,42 @@ test_force_layout_is_deterministic :: proc(t: ^testing.T) {
 		testing.expect_value(t, second[i], p)
 	}
 }
+
+@(test)
+test_force_layout_keeps_unlinked_nodes_close :: proc(t: ^testing.T) {
+	// A chain of 30, alone and then with 30 nodes that have no edges. Left
+	// to the forces, loose nodes were pushed out ~10,000 units, so a fitted
+	// picture was mostly empty space. Packed, they take about one row.
+	radii := make([]f32, 60, context.temp_allocator)
+	edges := make([]Graph_Edge, 29, context.temp_allocator)
+	for &r in radii {
+		r = 10
+	}
+	for &e, i in edges {
+		e = {i, i + 1, 1}
+	}
+	chain := force_layout(radii[:30], edges, context.temp_allocator)
+	pos := force_layout(radii, edges, context.temp_allocator)
+	for p, i in pos {
+		for j in i + 1 ..< len(pos) {
+			testing.expectf(t, distance(p, pos[j]) >= radii[i] + radii[j] + FORCE_GAP - 0.5, "nodes %d and %d overlap", i, j)
+		}
+	}
+	// The chain is only moved, not changed.
+	for i in 1 ..< 30 {
+		testing.expectf(t, distance(pos[i] - pos[0], chain[i] - chain[0]) < 0.01, "chain node %d moved within the chain", i)
+	}
+	chain_size, size := extent(chain, radii[:30]), extent(pos, radii)
+	row := 2 * (2 * radii[0] + FORCE_GROUP_GAP)
+	testing.expectf(t, size.x <= chain_size.x + row && size.y <= chain_size.y + row, "the picture is %v across; the chain alone is %v", size, chain_size)
+}
+
+@(private = "file")
+extent :: proc(pos: [][2]f32, radii: []f32) -> [2]f32 {
+	lo, hi := [2]f32{max(f32), max(f32)}, [2]f32{min(f32), min(f32)}
+	for p, i in pos {
+		lo = {min(lo.x, p.x - radii[i]), min(lo.y, p.y - radii[i])}
+		hi = {max(hi.x, p.x + radii[i]), max(hi.y, p.y + radii[i])}
+	}
+	return hi - lo
+}

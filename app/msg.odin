@@ -5,7 +5,10 @@
  */
 package app
 
+import "../clarity"
 import "../components"
+import "../validation"
+import "../workspace"
 
 Msg :: union {
 	Open_Requested,
@@ -15,6 +18,17 @@ Msg :: union {
 	Close_World,
 	Area_Picked,
 	Graph,
+	Center_Chosen,
+	Area_Map,
+	Search_Changed,
+	Search_Chosen,
+	Filters_Shown,
+	Severity_Shown,
+	State_Shown,
+	Filters_Reset,
+	Note_Draft_Changed,
+	Note_Added,
+	Review_Saved,
 	Exit_Followed,
 	Dismiss_Error,
 	Theme_Changed,
@@ -54,6 +68,60 @@ Graph :: struct {
 	msg: components.Room_Graph_Msg,
 }
 
+// The Rooms/Areas switch.
+Center_Chosen :: struct {
+	view: Center_View,
+}
+
+// A message from the area map component.
+Area_Map :: struct {
+	msg: components.Area_Map_Msg,
+}
+
+// The room search box changed (text in the frame arena).
+Search_Changed :: struct {
+	text: string,
+}
+
+// A room search result was chosen.
+Search_Chosen :: struct {
+	room: Room_Ref,
+}
+
+// The Filters button (or Done): open or close the popover.
+Filters_Shown :: struct {
+	is_open: bool,
+}
+
+// A severity's box in the Filters popover.
+Severity_Shown :: struct {
+	severity: validation.Severity,
+	is_shown: bool,
+}
+
+// A review state's box in the Filters popover.
+State_Shown :: struct {
+	state:    clarity.State,
+	is_shown: bool,
+}
+
+// Back to DEFAULT_FILTERS.
+Filters_Reset :: struct {}
+
+// The area inspector's note box changed (text in the frame arena).
+Note_Draft_Changed :: struct {
+	text: string,
+}
+
+// The area inspector's Add note button.
+Note_Added :: struct {}
+
+// area.clarity was written. `error` is "" on success, else heap-allocated
+// text that now belongs to update.
+Review_Saved :: struct {
+	error: string,
+}
+
 // An exit's target was clicked in the inspector: show that room.
 Exit_Followed :: struct {
 	target: int, // Vnum
@@ -79,6 +147,7 @@ Effect :: union {
 	Show_Open_Dialog,
 	Load_Request,
 	Follow_System_Theme,
+	Save_Review,
 	Quit,
 	Redraw_Soon,
 }
@@ -93,6 +162,11 @@ Load_Request :: struct {
 }
 
 Follow_System_Theme :: struct {}
+
+// Write the world's review file (area.clarity) after an edit.
+Save_Review :: struct {
+	ws: ^workspace.Workspace,
+}
 
 Quit :: struct {}
 

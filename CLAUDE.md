@@ -32,8 +32,14 @@ mudclarity/
 │   ├── update.odin          # step (pure: State, Msg -> State, Effect) and update
 │   ├── effects.odin         # Effect -> skald.Command; dialog and drop handlers
 │   ├── world.odin           # World: workspace + layouts, marks, labels, room lookup, findings
+│   ├── world_map.odin       # The area map's data: nodes, links between areas, positions
 │   ├── inspector_data.odin  # Resolve the selected room's exits and findings for the inspector
+│   ├── area_inspector_data.odin # The shown area's header, filtered findings and notes
+│   ├── filters.odin         # Filters (severities, review states); marking rooms and areas
+│   ├── filters_view.odin    # The Filters button and popover
 │   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
+│   ├── search.odin          # Room search: the index and ranked matching
+│   ├── search_view.odin     # The search box and its results popover
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
 │   ├── welcome_view.odin    # Screens, one file each
@@ -41,11 +47,16 @@ mudclarity/
 │   └── *_test.odin
 ├── components/              # package components: reusable GUI pieces
 │   ├── common.odin          # heading, caption, stat, banner (generic over $Msg)
-│   ├── text.odin            # display_text: Latin-1 file text -> safe UTF-8
+│   ├── text.odin            # display_text (Latin-1 file text), display_user_text (UTF-8 notes)
 │   ├── graph_camera.odin    # Cells <-> graph <-> screen; zoom at cursor; fit
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
+│   ├── area_map.odin        # Area map: one circle per area, links between them
+│   ├── area_map_paint.odin  # Painting the area map
+│   ├── canvas_gestures.odin # Press, pan and zoom shared by the map canvases
 │   ├── room_inspector.odin  # Room inspector panel (generic over $Msg; see GUI structure)
+│   ├── area_inspector.odin  # Area inspector panel: facts, findings, notes and a note box
+│   ├── inspector_panel.odin # The inspectors' shared frame (panel, section, text width)
 │   └── *_test.odin
 ├── layout/                  # package layout: room grid placement, no GUI code
 │   ├── layout.odin          # Layout, Cell, Edge; compute / destroy / room_at
@@ -53,6 +64,7 @@ mudclarity/
 │   ├── island.odin          # Grow an island; fit it at the nearest free spot
 │   ├── pack.odin            # Pack components side by side
 │   ├── edges.odin           # Edges (straight/bent/vertical, two-way) and external exits
+│   ├── force.odin           # Force-directed layout for small graphs (the area map)
 │   └── *_test.odin
 ├── cli/                     # package cli: command-line commands
 │   ├── cli.odin             # run(args, output) -> exit code; Output; shared helpers
@@ -445,9 +457,12 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   components are packed apart. On the corpus (~10k rooms, ~15 ms) about 1%
   of rooms are displaced. Exits to vnum 0 are look-only and never edges.
 - **Screens**: Welcome (open an `area.lst` or drop files; recent files are planned) and
-  World: toolbar (area picker, search, zoom, filters) over room inspector
-  (left), room graph (center) and findings log (right). Review actions
-  (accept, flag, reopen, note, issue) are dialogs.
+  World: a header (the world's name, its folder cut short with "…" so
+  Close stays in the window, Close), summary counts, a toolbar
+  (Rooms/Areas switch, area picker, room search, filters) over the
+  inspector (left), room graph or area map with their zoom buttons
+  (center) and findings log (right, planned). Review actions (accept,
+  flag, reopen, issue) are planned as dialogs.
 
 ### GUI structure
 
@@ -470,6 +485,10 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- Odin checks a generic proc's body only where it is instantiated, so a
+  `$Msg` view's imports count as unused in the `components` test build.
+  Do the work that needs other packages (`strings`, `filepath`, ...) in
+  small non-generic helpers (see `area_inspector.odin`).
 - Components draw into whichever window they're given, so a panel can later
   move into its own window (dispatch on `ctx.window`).
 - `update` procs are pure (state and message in, state and command out) and
@@ -534,20 +553,85 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 ### Room graph
 
 - One area and one level at a time. Rooms are boxes outlined by their
-  worst finding that isn't accepted (red error, amber warning, muted info;
+  worst finding that the filters show (red error, amber warning, muted info;
   only `validation.ROOM_CHECKS` count), thicker in the accent colour when
   selected; a dot marks a displaced room. Exits: straight corridors, bent
   curves (translucent amber), arrowheads on one-way exits, up/down
   triangles on rooms with exits to other levels, and stubs for exits that
   leave the area.
 - Drag empty space to pan, scroll to zoom at the cursor, click a room to
-  select it (reported to `app` as `Room_Clicked`); Up/Down change level and
-  Fit refits. Labels appear only when zoomed in enough to read.
+  select it (reported to `app` as `Room_Clicked`); Up/Down change level,
+  − and + zoom about the canvas centre (`zoom_buttons`, shared with the
+  area map) and Fit refits. Labels appear only when zoomed in enough to
+  read. The hint beside the buttons is cut short with "…" (`hint`), so a
+  narrow window never makes the canvas wider than it.
 - A newly shown area fits itself once the canvas has a size. Skald redraws
   only on events, so a load returns `Redraw_Soon` to get that frame.
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
   no `Ctx`); `draw_text` takes the *baseline*, and its `size` is the cap
   height.
+
+### Filters
+
+- The toolbar's Filters popover has a box per severity and per review
+  state; Reset goes back to `DEFAULT_FILTERS` (everything but accepted
+  findings), and the button reads "Filters (changed)" otherwise. Escape,
+  Done or a click elsewhere closes it.
+- `State.filters` is a plain `Filters` value (two bit sets) so settings
+  can keep it (#27). Changing it runs `apply_filters`, which re-marks the
+  open world's rooms and areas in place (a pass over the findings); a
+  newly loaded world is marked with the filters in use. The room graph,
+  the area map and the area inspector's counts all follow it; the room
+  inspector still lists every finding of the room, with its state.
+
+### Room search
+
+- The toolbar's search box finds rooms across the world by vnum (`3001`,
+  `#3001`) or name, ignoring case. `World.search_index` (picker order,
+  lower-cased display names) is built once per load; `step` searches it
+  when the query changes (`set_search`), never `view` (~0.2 ms for the
+  whole world). Ranked: the vnum in every area that defines it, then names
+  equal to the query, starting with it, and containing it. The best
+  `SEARCH_LIMIT` show in a popover with a count of the rest.
+- Choosing a result goes to the room (`go_to_room`, shared with following
+  an exit): switch to the room graph and to the room's area, select it,
+  centre on it. Escape or the clear button empties the box; a new world
+  or Close clears it.
+- The popover publishes its rect (`widget_stamp_overlay_rect`), and the
+  canvases ignore presses under any open popover (`mouse_over_overlay` in
+  `canvas_gestures`), so a click on a result (or a dropdown entry) never
+  also lands on the map beneath.
+
+### Area map
+
+- The Rooms/Areas switch in the toolbar (`State.center`) shows the map of
+  every area in place of the room graph; the inspector stays. Each area is
+  a circle sized by its rooms and outlined by its worst finding that the
+  filters show (any check, not just room checks); unopened areas are faint and
+  the area the room graph shows has an accent ring. Lines join areas that
+  exits or placed portals connect: thicker for more, accent colour when
+  portals are the only link, an arrowhead when they go one way only.
+- Clicking an area selects it, as picking it does (the ring and picker
+  follow); double-clicking opens its room graph (afresh if it's another
+  area). Following an exit in the inspector also goes back to the room
+  graph.
+  The map keeps its camera while hidden; a new world refits it.
+- While the map is up, the left panel is the **area inspector** for the
+  area shown: file, name, rooms, levels, vnums, type, climate, the
+  findings the filters show, credits, builders, an Open rooms button, and the area's notes
+  (`kind = "area"`, vnum 0, as `mudclarity note` writes them) with a box
+  to add one. Adding edits the review document in `step` and returns
+  `Save_Review`; `command_for` saves on the GUI thread (the file is a few
+  hundred KB, and the document must not change while a worker writes it)
+  and reports failure as `Review_Saved`. Loose files have no review file,
+  so the box is replaced by a hint to open the `area.lst`. A draft is
+  dropped when another area is shown.
+- Notes are UTF-8 typed by the user (or edited by hand), so they are drawn
+  through `display_user_text`, not `display_text` (which is for Latin-1).
+- `World.area_map` (`app/world_map.odin`) is built once per load; the view
+  only fills in the camera and the current area. Positions come from
+  `layout.force_layout`, which lays out each connected group on its own and
+  packs the groups in rows, so areas without links don't drift away.
 
 ## Build & Development
 
@@ -702,8 +786,31 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - `room_graph_update`, `room_at_point`, `level_bounds` and the camera maths
   (`graph_camera_test`) are tested without drawing; `World`'s layouts and
   room marks (including accepted findings not marking) in `world_test`.
+- `area_map_update`, `area_at_point` and `map_bounds` (`area_map_test`);
+  the area map's names, links (exits both ways, portals, look-only and
+  same-area exits left out), positions and marks in `world_map_test`.
+- Switching between the room graph and the area map, selecting
+  (click) and opening (double-click) an area, following an exit from the
+  map, and a new world resetting both
+  (`center_test`).
+- Area notes (`area_notes_test`): the inspector's data, adding a note
+  (blank drafts add nothing; the saved file is read back), a draft dropped
+  with its area, loose files refused, and a failed save shown.
+- Filters (`filters_test`): `shows`, re-marking rooms and areas and the
+  inspector's counts as boxes change, Reset, accepted findings shown on
+  request, filters kept across a reload, and changes with no world open.
+- Room search (`search_test`): ranking (vnum, exact, prefix, contains),
+  `#` and spaces, duplicate vnums across areas, the limit and total, blank
+  queries, Latin-1 names and picker order in the index, and searching and
+  choosing a result in `step` (from the map, out of range, cleared by a
+  reload).
+- Corpus test (`app/corpus_test`) opens the whole world as the loading
+  thread does (< 3 s), times the area map on its own (< 250 ms) and a
+  one-letter search over every room (< 10 ms).
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
-  length limits, and every byte value producing valid UTF-8.
+  length limits, and every byte value producing valid UTF-8;
+  `display_user_text` on UTF-8, invalid and cut-off sequences, controls,
+  and every byte pair.
 - Check the window itself by running it (see VS Code, or `xdotool` plus
   `import -window <id>` to screenshot only the app's own window).
 
