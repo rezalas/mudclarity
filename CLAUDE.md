@@ -798,6 +798,14 @@ Every change needs tests.
   use small worlds from `world_make(...)`.
 - Corpus test saves and reloads a review of the whole world in a temp dir.
 
+**Settings (`settings/`)**
+
+- Round trip is byte-identical; missing keys use the defaults; a bad value
+  resets only its setting and is named; unreadable files (empty, not JSON,
+  wrong root, format or version, too large) give the defaults; unknown
+  keys survive a save; newer files are read and refused for saving;
+  saving creates the folder; an unreadable file is backed up once.
+
 Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 `write_world`, ...) live in `testkit/`; a suite's own helpers stay in its
 `helpers_test.odin`.
