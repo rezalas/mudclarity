@@ -72,3 +72,42 @@ test_choosing_a_text_scale :: proc(t: ^testing.T) {
 	testing.expect_value(t, follow.settings.text_scale, 150)
 	finish(s)
 }
+
+@(test)
+test_dragging_the_text_scale_applies_it_on_release :: proc(t: ^testing.T) {
+	store := Settings_Store {
+		loaded = {settings = settings.DEFAULTS, status = .Missing},
+	}
+	s := init_with(&store)
+	effect: Effect
+	s.graph.needs_fit, s.area_map.needs_fit = false, false
+
+	// Dragging only shows the value (and asks for a frame to see the release).
+	s, effect = step(s, Text_Scale_Dragged{117})
+	testing.expect_value(t, s.text_scale_draft, 115)
+	testing.expect_value(t, s.settings.text_scale, settings.DEFAULT_TEXT_SCALE)
+	_, is_redraw := effect.(Redraw_Soon)
+	testing.expect(t, is_redraw)
+
+	// Letting go chooses it: applied, saved, the draft gone, the canvases refitted.
+	s, effect = step(s, Text_Scale_Chosen{s.text_scale_draft})
+	testing.expect_value(t, s.text_scale_draft, 0)
+	testing.expect_value(t, s.settings.text_scale, 115)
+	_, is_apply := effect.(Apply_Settings)
+	testing.expect(t, is_apply)
+	testing.expect(t, s.graph.needs_fit && s.area_map.needs_fit)
+	finish(s)
+}
+
+@(test)
+test_app_type :: proc(t: ^testing.T) {
+	base := skald.theme_light()
+	th := app_type(base)
+	testing.expect_value(t, th.font.size_xs, 12)
+	testing.expect_value(t, th.font.size_sm, 14)
+	testing.expect_value(t, th.font.size_md, 15)
+	// Headings and the summary numbers keep Skald's sizes.
+	testing.expect_value(t, th.font.size_lg, base.font.size_lg)
+	testing.expect_value(t, th.font.size_xl, base.font.size_xl)
+	testing.expect_value(t, th.color, base.color)
+}

@@ -847,7 +847,9 @@ Every change needs tests.
   resets only its setting and is named; unreadable files (empty, not JSON,
   wrong root, format or version, too large) give the defaults; unknown
   keys survive a save; newer files are read and refused for saving;
-  saving creates the folder; an unreadable file is backed up once.
+  saving creates the folder; an unreadable file is backed up once;
+  `text_scale` is clamped onto steps and a non-number reported; old
+  `text_size` names are read as percentages and dropped on save.
 
 Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 `write_world`, ...) live in `testkit/`; a suite's own helpers stay in its
@@ -888,10 +890,12 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   nothing), only a followed system theme tracking the OS, `theme_for`,
   `save_settings` (written, newer file left alone, no store or folder),
   and a failed save shown.
-- Text size (`text_size_test`, `components/common_test`): `scaled_theme`
-  (fonts, spacing, radii; pills and colours unchanged), `theme_for` and
-  `ui_scale` for every size, `next_text_size` at the ends, choosing a
-  size, and an OS light/dark switch keeping it.
+- Text size (`text_scale_test`, `components/common_test`): `scaled_theme`
+  (fonts, spacing, radii; pills and colours unchanged), `app_type`,
+  `theme_for` and `ui_scale` across the range (and out of it),
+  `next_text_scale` at the ends, choosing a size, dragging (shown, then
+  applied on release, with both canvases refitted), and an OS light/dark
+  switch keeping it.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
   request, filters kept across a reload, changes with no world open,
