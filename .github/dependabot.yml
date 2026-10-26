@@ -1,0 +1,12 @@
+# Keep the workflow's actions and the Skald submodule current: Dependabot
+# opens a pull request (which CI then tests) when either falls behind.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly

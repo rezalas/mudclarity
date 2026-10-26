@@ -129,6 +129,7 @@ mudclarity/
 ├── test_data/               # Real and hand-made .are files for tests
 ├── vendor/skald/            # Skald GUI library (git submodule)
 ├── .vscode/                 # Tasks, launch (debug) configs, recommended extensions
+├── .github/                 # CI workflow (ci.yml) and Dependabot config
 ├── ols.json                 # Odin language server: the `gui` collection
 └── CLAUDE.md                # This file
 ```
@@ -830,6 +831,7 @@ wrappers. The examples use `./build.sh`; on Windows use `build.bat` and
 ./build.sh          # Debug build to build/mudclarity
 ./build.sh run [args]   # Build and run (args go to mudclarity)
 ./build.sh test     # Vet, cross-OS type-check, and run tests (see Testing)
+./build.sh test-asan    # GUI-free packages' tests under AddressSanitizer (Linux)
 ./build.sh debug-tests [name]         # Test binaries for a debugger (see VS Code)
 ./build.sh help     # The build commands
 ./build/mudclarity                    # Open the GUI
@@ -869,6 +871,40 @@ Windows SDK), so Windows is covered when `test` runs there.
   their bytes and hashes are part of the tests.
 - Text from files is bytes, never assumed UTF-8 (see `display_text`).
 
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request, using the
+build tool's commands, as on a developer's machine:
+
+- **Linux (test)**, **Windows (test)** and **macOS (test)**: `./build.sh`
+  (`build.bat`) and `./build.sh test` (vet, cross-OS type checks, every
+  package's tests). Windows needs no Developer Command Prompt: Odin finds
+  the MSVC linker itself, and SDL3 and STB come with Odin. macOS installs
+  SDL3 with Homebrew (`LIBRARY_PATH` points the linker at it) and builds
+  Odin's STB with `build_stb.sh unix` for the Linux type checks.
+- **Linux (test-asan)**: `./build.sh test-asan`, the packages that read
+  untrusted files under AddressSanitizer, so an out-of-bounds read or use
+  after free fails. The parser's fuzz tests get a new random seed every
+  run; a failing run's log shows it (`ODIN_TEST_RANDOM_SEED` reproduces).
+- Linux runs in an `ubuntu:26.04` container, the first LTS with SDL3 in
+  its archive (the GUI's tests link it; no GPU is needed). Odin is the
+  pinned `ODIN_RELEASE`, checked against `ODIN_LINUX_SHA256`,
+  `ODIN_WINDOWS_SHA256` and `ODIN_MACOS_SHA256`: to move to a newer Odin,
+  change all four (GitHub shows each download's digest on the release).
+  Actions are pinned to commit SHAs.
+- AddressSanitizer runs on Linux only: on macOS, Odin's LLVM asks for a
+  sanitizer runtime check (`__asan_version_mismatch_check_v8`) that Apple
+  Clang's runtime doesn't have, so it doesn't link; the code it checks is
+  the same on every OS.
+- The corpus tests are skipped (the Riftshadow areas are a separate
+  repository).
+- `.github/dependabot.yml` opens pull requests when an action or the Skald
+  submodule falls behind.
+- There is no Snyk (or CodeQL) job: neither reads Odin, and our only
+  dependency is a submodule, so they would pass without scanning
+  anything. AddressSanitizer and the fuzz tests are the security checks;
+  turn on GitHub's secret scanning in the repository settings.
+
 ### Dependencies
 
 - **Odin**: `dev-2026-10` or newer (Odin's API still changes, so report
@@ -880,7 +916,11 @@ Windows SDK), so Windows is covered when `test` runs there.
     `SDL3.dll` ships with Odin (`vendor\sdl3`) and the build tool copies it
     into `build\`. The Vulkan loader comes with GPU drivers.
   - **macOS**: the LunarG Vulkan SDK (provides MoltenVK); source its
-    `setup-env.sh` before running. Odin's SDL3 and STB come prebuilt.
+    `setup-env.sh` before running. SDL3 from Homebrew (`brew install
+    sdl3`; set `LIBRARY_PATH=$(brew --prefix)/lib` if the linker can't
+    find it). Odin's STB comes prebuilt for macOS, but `./build.sh test`
+    also type-checks the Linux targets, which need
+    `$ODIN_ROOT/vendor/stb/src/build_stb.sh unix` run once.
   - **Linux**: SDL3 (e.g. `sdl3` / `libsdl3-dev`) and a Vulkan loader and
     driver from the distro. Odin's STB libraries must be built once per
     Odin install: `$ODIN_ROOT/vendor/stb/src/build_stb.sh` (needs write
@@ -1105,6 +1145,7 @@ and reject entries containing path separators or `..`.
 ### Review Checklist
 
 - [ ] `./build.sh test` (or `build.bat test`) passes: vet, cross-OS checks, tests
+- [ ] CI is green (Linux, Windows and macOS tests; Linux test-asan)
 - [ ] Nothing OS-specific outside `tools/build` (see Cross-platform rules)
 - [ ] New or changed checks are calibrated against the corpus
 - [ ] Follows naming and style conventions
