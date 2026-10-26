@@ -51,5 +51,12 @@ open_corpus :: proc(t: ^testing.T, dir: string) {
 	// Areas without links once ended up ~10,000 units out.
 	lo, hi := components.map_bounds(m.positions, m.rooms)
 	testing.expectf(t, hi.x - lo.x < 6000 && hi.y - lo.y < 6000, "the area map is %v across", hi - lo)
+	// Searching runs on every keystroke; a single letter matches most rooms.
+	testing.expect_value(t, len(world.search_index), 9886)
+	start = time.now()
+	_, matched := search_rooms(world.search_index, "e", SEARCH_LIMIT, context.temp_allocator)
+	search_time := time.since(start)
+	testing.expectf(t, time.duration_milliseconds(search_time) < 10, "searching took %v", search_time)
+	log.infof("corpus: searching for \"e\" matched %d rooms in %v", matched, search_time)
 	log.infof("corpus: world of %d areas opened in %v; area map with %d links, %v across, in %v", len(world.ws.areas), elapsed, len(m.links), hi - lo, map_time)
 }

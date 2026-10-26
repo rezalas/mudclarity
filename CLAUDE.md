@@ -781,8 +781,14 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Area notes (`area_notes_test`): the inspector's data, adding a note
   (blank drafts add nothing; the saved file is read back), a draft dropped
   with its area, loose files refused, and a failed save shown.
+- Room search (`search_test`): ranking (vnum, exact, prefix, contains),
+  `#` and spaces, duplicate vnums across areas, the limit and total, blank
+  queries, Latin-1 names and picker order in the index, and searching and
+  choosing a result in `step` (from the map, out of range, cleared by a
+  reload).
 - Corpus test (`app/corpus_test`) opens the whole world as the loading
-  thread does (< 3 s) and times the area map on its own (< 250 ms).
+  thread does (< 3 s), times the area map on its own (< 250 ms) and a
+  one-letter search over every room (< 10 ms).
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
   length limits, and every byte value producing valid UTF-8;
   `display_user_text` on UTF-8, invalid and cut-off sequences, controls,
