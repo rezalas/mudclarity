@@ -960,7 +960,8 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   exits (staying put without one), up/down changing level, into another
   area and back, Page keys changing level without an exit, Escape and a
   click away deselecting while a drag doesn't, the keys listed in Help,
-  `pan_distance`, and `room_nearest_middle` per level.
+  `pan_distance`, and `room_nearest_middle` per level; the area map's
+  keys listed, and `area_in_direction` (cone, side, nothing that way).
 - Keys (`keys_test`): every chord the app registers is in the table,
   every binding has keys and an action and every scope has bindings,
   `chord_text` for the platform, and Help and Settings taking turns.

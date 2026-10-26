@@ -112,3 +112,14 @@ test_room_graph_keys_are_listed :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, n, len(components.ROOM_GRAPH_KEYS))
 }
+
+@(test)
+test_area_map_keys_are_listed :: proc(t: ^testing.T) {
+	n := 0
+	for b in key_bindings() {
+		if b.scope == .Area_Map {
+			n += 1
+		}
+	}
+	testing.expect_value(t, n, len(components.AREA_MAP_KEYS))
+}

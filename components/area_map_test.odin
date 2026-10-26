@@ -86,3 +86,28 @@ test_area_at_point :: proc(t: ^testing.T) {
 	_, ok = area_at_point(&d, {50 + 200, 0})
 	testing.expect(t, !ok)
 }
+
+@(test)
+test_area_in_direction :: proc(t: ^testing.T) {
+	// 0 in the middle; 1 east and a little up; 2 far east; 3 north-east
+	// at a steep angle (outside the cone going east); 4 west.
+	positions := [][2]f32{{0, 0}, {100, -20}, {300, 0}, {40, -200}, {-150, 0}}
+	east := [2]f32{1, 0}
+	area, ok := area_in_direction(positions, 0, east)
+	testing.expect(t, ok)
+	testing.expect_value(t, area, 1) // The nearest within 45°
+	area, ok = area_in_direction(positions, 0, {-1, 0})
+	testing.expect(t, ok && area == 4)
+	area, ok = area_in_direction(positions, 0, {0, -1}) // North (y is down)
+	testing.expect(t, ok && area == 3)
+
+	// Nothing within the cone: the nearest on that side will do.
+	area, ok = area_in_direction(positions, 2, {0, -1})
+	testing.expect(t, ok)
+	testing.expect_value(t, area, 1)
+	// Nothing on that side at all.
+	_, ok = area_in_direction(positions, 2, east)
+	testing.expect(t, !ok)
+	_, ok = area_in_direction(positions[:1], 0, east)
+	testing.expect(t, !ok)
+}
