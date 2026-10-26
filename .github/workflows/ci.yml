@@ -100,18 +100,17 @@ jobs:
         shell: cmd
         run: build.bat test
 
+  # No test-asan here: Odin's LLVM asks for an AddressSanitizer runtime
+  # check (__asan_version_mismatch_check_v8) that Apple Clang's runtime
+  # doesn't have, so it doesn't link. The code it checks is the same on
+  # every OS, and Linux runs it.
   macos:
-    name: macOS (${{ matrix.task }})
+    name: macOS (test)
     runs-on: macos-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        task: [test, test-asan]
     steps:
-      # Odin links SDL3 from the system on macOS (system:SDL3); STB comes
-      # prebuilt with Odin, and Vulkan (MoltenVK) is only needed to run
-      # the app.
+      # Odin links SDL3 from the system on macOS (system:SDL3), and Vulkan
+      # (MoltenVK) is only needed to run the app.
       - name: Install SDL3
         run: |
           brew install sdl3
@@ -130,9 +129,15 @@ jobs:
           tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin" --strip-components=1
           echo "$RUNNER_TEMP/odin" >> "$GITHUB_PATH"
 
+      # Odin ships STB prebuilt for macOS only; `test` also type-checks
+      # the Linux targets, whose STB package needs the libraries built.
+      - name: Build Odin's STB libraries
+        run: |
+          cd "$(odin root)/vendor/stb/src"
+          sh build_stb.sh
+
       - name: Build the app
-        if: matrix.task == 'test'
         run: ./build.sh
 
-      - name: Run ${{ matrix.task }}
-        run: ./build.sh ${{ matrix.task }}
+      - name: Run test
+        run: ./build.sh test
