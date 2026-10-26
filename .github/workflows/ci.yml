@@ -1,4 +1,4 @@
-# Build and test every push and pull request.
+# Build and test every push and pull request, on Linux, Windows and macOS.
 #
 # Linux runs in an Ubuntu 26.04 container: it is the first LTS whose
 # archive has SDL3, which the GUI's tests link against (no GPU is needed;
@@ -26,6 +26,8 @@ env:
   # the SHA-256 of its Linux download, so a changed file fails the build.
   ODIN_RELEASE: dev-2026-10
   ODIN_LINUX_SHA256: c3c8b095621fd0c75f7f73e3a0829f1b4d45324225f20ba11ed8dc4da310a8ab
+  ODIN_WINDOWS_SHA256: b6b2e426a8b6f147b74ec7e18bef8df27cf40fe16193159df7ca09a0cc0c2011
+  ODIN_MACOS_SHA256: b276c6ac87c3eea17446a6ca9080089b6e9f492057fb773591775ee49d92a1cf
 
 jobs:
   linux:
@@ -61,6 +63,72 @@ jobs:
         run: |
           cd "$(odin root)/vendor/stb/src"
           sh build_stb.sh
+
+      - name: Build the app
+        if: matrix.task == 'test'
+        run: ./build.sh
+
+      - name: Run ${{ matrix.task }}
+        run: ./build.sh ${{ matrix.task }}
+
+  windows:
+    name: Windows (test)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out (with the Skald submodule)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+
+      # SDL3 and the STB libraries come with Odin on Windows; the Vulkan
+      # loader is only needed to run the app, not its tests.
+      - name: Install Odin ${{ env.ODIN_RELEASE }}
+        shell: pwsh
+        run: |
+          $zip = "$env:RUNNER_TEMP\odin.zip"
+          Invoke-WebRequest -Uri "https://github.com/odin-lang/Odin/releases/download/$env:ODIN_RELEASE/odin-windows-amd64-$env:ODIN_RELEASE.zip" -OutFile $zip
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $env:ODIN_WINDOWS_SHA256) { throw "Odin download does not match ODIN_WINDOWS_SHA256" }
+          Expand-Archive $zip -DestinationPath C:\odin
+          "C:\odin\dist" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Build the app
+        shell: cmd
+        run: build.bat
+
+      - name: Run test
+        shell: cmd
+        run: build.bat test
+
+  macos:
+    name: macOS (${{ matrix.task }})
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [test, test-asan]
+    steps:
+      # Odin links SDL3 from the system on macOS (system:SDL3); STB comes
+      # prebuilt with Odin, and Vulkan (MoltenVK) is only needed to run
+      # the app.
+      - name: Install SDL3
+        run: |
+          brew install sdl3
+          echo "LIBRARY_PATH=$(brew --prefix)/lib" >> "$GITHUB_ENV"
+
+      - name: Check out (with the Skald submodule)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+
+      - name: Install Odin ${{ env.ODIN_RELEASE }}
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/${ODIN_RELEASE}/odin-macos-arm64-${ODIN_RELEASE}.tar.gz"
+          echo "${ODIN_MACOS_SHA256}  $RUNNER_TEMP/odin.tar.gz" | shasum -a 256 -c -
+          mkdir -p "$RUNNER_TEMP/odin"
+          tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin" --strip-components=1
+          echo "$RUNNER_TEMP/odin" >> "$GITHUB_PATH"
 
       - name: Build the app
         if: matrix.task == 'test'
