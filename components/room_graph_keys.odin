@@ -24,7 +24,7 @@ ROOM_GRAPH_KEYS := [?]Key_Hint {
 	{"+, -", "Zoom in or out"},
 	{"0", "Fit the level to the view"},
 	{"Esc", "Deselect the room (as does clicking empty space)"},
-	{"L", "Show or hide the legend"},
+	{"L", "Show or hide the legend (a large map keeps it in the corner)"},
 }
 
 @(private)

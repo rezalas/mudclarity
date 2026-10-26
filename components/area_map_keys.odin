@@ -20,7 +20,7 @@ AREA_MAP_KEYS := [?]Key_Hint {
 	{"Shift+arrows", "Move the view"},
 	{"+, -", "Zoom in or out"},
 	{"0", "Fit the map to the view"},
-	{"L", "Show or hide the legend"},
+	{"L", "Show or hide the legend (a large map keeps it in the corner)"},
 }
 
 @(private)

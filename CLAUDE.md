@@ -759,8 +759,13 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
 
 ### Legend
 
-- Each map has a **Legend** button (and `L` while it has focus) that opens
-  a panel over the canvas's top left, listing every mark it draws:
+- **Where it shows**: when the canvas has room (`legend_docks`: at least
+  three legends wide and tall enough for all of it, so roughly a
+  1600x900 window at 100% text), it **stays docked in the bottom-right
+  corner**, always shown, and the Legend button is hidden; it docks and
+  undocks as the window or the text size changes. Otherwise each map has
+  a **Legend** button (and `L` while it has focus) that opens it over the
+  canvas's top left. Either way it lists every mark the map draws:
   rooms (plain, each severity, selected, displaced, up/down exits) and
   exits (two-way, one-way, bent, leaving the area) on the room graph;
   areas (plain, each severity, unopened, current) and links (exits,

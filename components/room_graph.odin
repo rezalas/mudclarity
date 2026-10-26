@@ -223,13 +223,16 @@ room_graph_view :: proc(d: Room_Graph_Data, ctx: ^skald.Ctx(Room_Graph_Msg)) -> 
 		)
 	}
 	append(&controls, zoom_buttons(ctx, last, d.state.camera.zoom))
-	append(&controls, legend_button(ctx, d.state.is_legend_open))
+	is_docked := legend_docks(ROOM_GRAPH_LEGEND[:], {last.w, last.h}, ui_scale(th), th.spacing.md)
+	if !is_docked {
+		append(&controls, legend_button(ctx, d.state.is_legend_open))
+	}
 	append(&controls, hint(ctx, "Drag to pan, scroll to zoom, click a room to select it."))
 
 	cursor := skald.Cursor_Shape.Move if d.state.is_panning else .Default
 	legend := skald.spacer(0)
-	if d.state.is_legend_open && last.w > 0 {
-		legend = legend_view(ctx, ROOM_GRAPH_LEGEND[:], last)
+	if (is_docked || d.state.is_legend_open) && last.w > 0 {
+		legend = legend_view(ctx, ROOM_GRAPH_LEGEND[:], last, is_docked)
 	}
 	return skald.col(
 		skald.row(..controls[:], spacing = th.spacing.sm, cross_align = .Center),

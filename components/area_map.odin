@@ -158,14 +158,18 @@ area_map_view :: proc(d: Area_Map_Data, ctx: ^skald.Ctx(Area_Map_Msg)) -> skald.
 		canvas_gestures(ctx, id, last, d.state.is_panning, press)
 	}
 	cursor := skald.Cursor_Shape.Move if d.state.is_panning else .Default
-	legend := skald.spacer(0)
-	if d.state.is_legend_open && last.w > 0 {
-		legend = legend_view(ctx, AREA_MAP_LEGEND[:], last)
+	is_docked := legend_docks(AREA_MAP_LEGEND[:], {last.w, last.h}, ui_scale(th), th.spacing.md)
+	legend, button := skald.spacer(0), skald.spacer(0)
+	if (is_docked || d.state.is_legend_open) && last.w > 0 {
+		legend = legend_view(ctx, AREA_MAP_LEGEND[:], last, is_docked)
+	}
+	if !is_docked {
+		button = legend_button(ctx, d.state.is_legend_open)
 	}
 	return skald.col(
 		skald.row(
 			zoom_buttons(ctx, last, d.state.camera.zoom),
-			legend_button(ctx, d.state.is_legend_open),
+			button,
 			hint(ctx, "Each circle is an area; lines are exits and portals between areas. Click an area to see it, double-click to open its rooms."),
 			spacing = th.spacing.sm,
 			cross_align = .Center,

@@ -11,10 +11,11 @@ import "gui:skald"
  The map legend: what each mark on the room graph or the area map means.
  Each swatch is drawn with the maps' own painting (map_style.odin,
  paint_room_box, paint_area_circle, markers.odin) in the theme's colours,
- so it always matches the map, whatever the palette or light/dark. It
- opens over the top-left of the canvas with the Legend button or L, and
- clicks on it don't reach the map. Keys are in Help (F1), which it points
- to.
+ so it always matches the map, whatever the palette or light/dark. On a
+ canvas with room for it (legend_docks) it stays in the bottom-right
+ corner; on a smaller one it opens over the top left with the Legend
+ button or L. Clicks on it don't reach the map. Keys are in Help (F1),
+ which it points to.
 */
 
 Legend_Swatch :: enum u8 {
@@ -135,29 +136,52 @@ legend_swatch_color :: proc(c: skald.Theme_Colors, swatch: Legend_Swatch) -> ska
 	return c.fg
 }
 
-// The legend over the canvas whose rect is `last`, for `sections`. It
+// The legend's size at text scale `k` with `pad` padding: its width, and
+// the height it needs to show everything without scrolling.
+legend_size :: proc(sections: []Legend_Section, k, pad: f32) -> [2]f32 {
+	height := 2 * pad + LEGEND_FOOTER_HEIGHT * k
+	for section in sections {
+		height += LEGEND_TITLE_HEIGHT * k + f32(len(section.items)) * LEGEND_ROW_HEIGHT * k
+	}
+	return {LEGEND_WIDTH * k, height}
+}
+
+// How much wider than the legend a canvas must be to keep it docked in a
+// corner: it should take no more than about a third of the map.
+LEGEND_DOCK_RATIO :: f32(3)
+
+// Whether a canvas of `size` is roomy enough for the legend to stay
+// docked in its bottom-right corner, always shown: three legends wide and
+// tall enough for all of it without scrolling. Otherwise it is a popover
+// behind the Legend button.
+legend_docks :: proc(sections: []Legend_Section, size: [2]f32, k, pad: f32) -> bool {
+	need := legend_size(sections, k, pad)
+	return size.x >= need.x * LEGEND_DOCK_RATIO && size.y >= need.y + 16
+}
+
+// The legend over the canvas whose rect is `last`, for `sections`: docked
+// in the bottom-right corner, or as a popover at the top left. It
 // publishes its rect so the canvas ignores clicks on it.
-legend_view :: proc(ctx: ^skald.Ctx($Msg), sections: []Legend_Section, last: skald.Rect) -> skald.View {
+legend_view :: proc(ctx: ^skald.Ctx($Msg), sections: []Legend_Section, last: skald.Rect, is_docked: bool) -> skald.View {
 	th := ctx.theme
 	k := ui_scale(th)
 	pad := th.spacing.md
-	width := LEGEND_WIDTH * k
+	size := legend_size(sections, k, pad)
+	width, height := size.x, size.y
 	inner := width - 2 * pad
 	rows := make([dynamic]skald.View, context.temp_allocator)
-	height := 2 * pad + LEGEND_FOOTER_HEIGHT * k
 	for section in sections {
 		append(&rows, skald.col(skald.text(section.title, th.color.fg, th.font.size_md), height = LEGEND_TITLE_HEIGHT * k, main_align = .End))
-		height += LEGEND_TITLE_HEIGHT * k
 		for item in section.items {
 			data := new(Legend_Swatch_Data, context.temp_allocator) // Read by paint after view returns
 			data^ = {swatch = item.swatch, colors = th.color, scale = k}
 			swatch := skald.canvas(ctx, data, paint_legend_swatch, width = LEGEND_SWATCH_WIDTH * k, height = LEGEND_ROW_HEIGHT * k)
 			label := skald.text(item.label, th.color.fg_muted, th.font.size_sm, overflow = .Ellipsis)
 			append(&rows, skald.row(swatch, skald.flex(1, label), width = inner, height = LEGEND_ROW_HEIGHT * k, spacing = th.spacing.sm, cross_align = .Center))
-			height += LEGEND_ROW_HEIGHT * k
 		}
 	}
-	footer := skald.text("Press L to hide this; F1 lists the map's keys.", th.color.fg_muted, th.font.size_sm, max_width = inner)
+	hint := "F1 lists the map's keys." if is_docked else "Press L to hide this; F1 lists the map's keys."
+	footer := skald.text(hint, th.color.fg_muted, th.font.size_sm, max_width = inner)
 	append(&rows, skald.col(footer, height = LEGEND_FOOTER_HEIGHT * k, main_align = .End))
 	content := skald.col(..rows[:])
 	// Never taller than the canvas: scroll when it doesn't fit (a fixed
@@ -168,6 +192,9 @@ legend_view :: proc(ctx: ^skald.Ctx($Msg), sections: []Legend_Section, last: ska
 	}
 	card := skald.col(content, padding = pad, width = width, height = height, bg = th.color.elevated, radius = th.radius.md)
 	at := skald.Rect{last.x + 8, last.y + 8, 0, 0}
+	if is_docked {
+		at = {last.x + last.w - width - 8, last.y + last.h - height - 8, 0, 0}
+	}
 	skald.widget_stamp_overlay_rect(ctx.widgets, {at.x, at.y, width, height})
 	return skald.overlay(at, card, pin = true)
 }
