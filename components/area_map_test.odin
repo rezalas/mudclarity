@@ -33,8 +33,9 @@ test_area_map_pan_zoom_and_fit :: proc(t: ^testing.T) {
 	testing.expect(t, !s.is_panning)
 	s = area_map_update(s, Zoomed{factor = 2, at = {0, 0}}, d.positions, d.rooms)
 	testing.expect_value(t, s.camera.zoom, f32(2))
-	// Clicking an area is the host's business.
+	// Clicking and double-clicking an area are the host's business.
 	testing.expect_value(t, area_map_update(s, Area_Clicked{1}, d.positions, d.rooms), s)
+	testing.expect_value(t, area_map_update(s, Area_Opened{1}, d.positions, d.rooms), s)
 
 	size := [2]f32{800, 600}
 	s = area_map_update(s, Fitted{size}, d.positions, d.rooms)

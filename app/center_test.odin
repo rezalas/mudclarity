@@ -95,6 +95,36 @@ test_clicking_an_area_opens_it :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_clicking_an_area_selects_it :: proc(t: ^testing.T) {
+	s, dir, _ := open_world(t, "mudclarity_app_center_select")
+	defer os.remove_all(dir)
+	defer finish(s)
+	if !testing.expect(t, s.world != nil) do return
+	s.selected_room = 1
+	effect: Effect
+
+	s, _ = step(s, Center_Chosen{.Areas})
+	s, _ = step(s, Area_Map{components.Fitted{{800, 600}}})
+	camera := s.area_map.camera
+
+	// The area shown: nothing changes, its selected room is kept.
+	s, effect = step(s, Area_Map{components.Area_Clicked{0}})
+	testing.expect(t, effect == nil)
+	testing.expect_value(t, s.selected_room, 1)
+
+	// Another area becomes the one shown, as picking it does, but the
+	// map stays up and keeps its camera.
+	s, _ = step(s, Area_Map{components.Area_Clicked{1}})
+	testing.expect_value(t, s.center, Center_View.Areas)
+	testing.expect_value(t, s.area, 1)
+	testing.expect_value(t, s.selected_room, -1)
+	testing.expect_value(t, s.area_map.camera, camera)
+
+	s, _ = step(s, Area_Map{components.Area_Clicked{-1}})
+	testing.expect_value(t, s.area, 1)
+}
+
+@(test)
 test_following_an_exit_leaves_the_map :: proc(t: ^testing.T) {
 	s, dir, _ := open_world(t, "mudclarity_app_center_follow")
 	defer os.remove_all(dir)
