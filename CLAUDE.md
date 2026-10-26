@@ -55,6 +55,7 @@ mudclarity/
 │   ├── graph_camera.odin    # Cells <-> graph <-> screen; zoom at cursor; fit
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
+│   ├── room_graph_keys.odin # The room graph's keys (arrows follow exits)
 │   ├── area_map.odin        # Area map: one circle per area, links between them
 │   ├── area_map_paint.odin  # Painting the area map
 │   ├── canvas_gestures.odin # Press, pan and zoom shared by the map canvases
@@ -659,6 +660,17 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   read. The hint beside the buttons is cut short with "…" (`hint`), so a
   narrow window never makes the canvas wider than it. Labels follow the
   text size; a vnum label shrinks to fit its box if needed.
+- **Keyboard** (while the canvas has focus: Tab to it, or click it; a
+  ring in the accent colour shows it): arrows follow the selected room's
+  west/north/east/south exit, Page Up/Down its up/down exit (or change
+  level if it has none), reported as `Exit_Key` for `app` to resolve
+  (`follow_exit_key`, across areas too); with nothing selected an arrow
+  selects the room nearest the middle. Shift+arrows pan, `+` `-` zoom
+  about the centre, `0` fits (`canvas_keys`, shared with the area map),
+  Escape deselects (`Room_Deselected`). The list is `ROOM_GRAPH_KEYS`.
+- **Click away**: a press on empty space starts a pan; `pan_distance`
+  sums its travel, and if it ends under `CLICK_SLOP` (4 px) `app` treats
+  it as a click and deselects (#46). A real drag keeps the selection.
 - A newly shown area fits itself once the canvas has a size. Skald redraws
   only on events, so a load returns `Redraw_Soon` to get that frame.
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
