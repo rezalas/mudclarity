@@ -31,10 +31,10 @@ area in its area.lst during test and debug-tests.`
 SKALD_COLLECTION :: "-collection:gui=vendor/skald"
 
 // Packages with tests, in the order they run.
-TEST_PACKAGES :: [?]string{"formats", "validation", "clarity", "workspace", "cli", "layout", "components", "app"}
+TEST_PACKAGES :: [?]string{"formats", "validation", "clarity", "settings", "workspace", "cli", "layout", "components", "app"}
 
 // Our packages, for -vet-packages: vendor/skald does not pass -vet.
-OUR_PACKAGES :: "main,formats,models,validation,clarity,workspace,cli,layout,components,app,testkit"
+OUR_PACKAGES :: "main,formats,models,validation,clarity,settings,workspace,cli,layout,components,app,testkit"
 
 // Packages that import Skald. -strict-style applies to every package
 // compiled, Skald included, so their tests get -vet-style on our packages

@@ -96,6 +96,10 @@ mudclarity/
 │   ├── review.odin          # Finding keys/ids; merge a run with the file
 │   ├── edit.odin            # Reviews, issues, notes, refresh
 │   └── *_test.odin
+├── settings/                # package settings: the user's settings file (no GUI)
+│   ├── settings.odin        # Settings, defaults, the names written to the file
+│   ├── io.odin              # Path, load (never fails), save (atomic, keeps unknown keys)
+│   └── *_test.odin
 ├── validation/              # package validation: checks on a set of areas
 │   ├── validate.odin        # validate() entry point
 │   ├── world.odin           # Vnum indexes, completeness rule
@@ -435,6 +439,38 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 
 `check` exits 1 only for parse failures or errors that aren't accepted.
 
+## Settings File
+
+`settings.json` in a `mudclarity` folder in the OS's per-user config
+directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
+`~/Library/Application Support` on macOS, `$XDG_CONFIG_HOME` or
+`~/.config` on Linux). Pretty-printed JSON with sorted keys:
+
+```json
+{
+  "filters": {"severities": ["error", "warning", "info"], "states": ["open", "flagged", "needs_review"]},
+  "format": "mudclarity-settings",
+  "palette": "standard",
+  "text_size": "default",
+  "theme": "system",
+  "version": 1
+}
+```
+
+- Values are written as names, not numbers, so the file reads well and
+  survives reordering an enum.
+- It is untrusted input, and reading it never fails: a missing file gives
+  the defaults; an unreadable one (too large, not JSON, wrong format) gives
+  the defaults and a warning for a banner, and is kept as
+  `settings.json.bak` before the first save replaces it; a bad value
+  resets only that setting and is named in the warning.
+- Keys this version doesn't know (including inside `filters`) are kept
+  when saving: the file is read as a raw JSON object and ours are written
+  over it. A file from a newer `version` is read as far as possible and
+  never saved over.
+- Saves create the folder if needed and go to a temp file renamed into
+  place, like `area.clarity`.
+
 ## Visualization (Skald)
 
 - Skald renders with **Vulkan + SDL3**, not raylib. Do not add raylib; draw the
@@ -657,7 +693,7 @@ wrappers. The examples use `./build.sh`; on Windows use `build.bat` and
 odin build . -collection:gui=./vendor/skald -debug -out:build/mudclarity
 
 # Type-check only. Vet only our packages: vendor/skald does not pass -vet.
-odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,workspace,cli,layout,components,app
+odin check . -collection:gui=./vendor/skald -vet -vet-style -vet-packages:main,formats,models,validation,clarity,settings,workspace,cli,layout,components,app
 ```
 
 `-strict-style` applies to every package compiled, Skald included, so tests
