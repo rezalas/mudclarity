@@ -21,6 +21,8 @@ USAGE :: `usage: build.sh | build.bat [command]
   run [args...]       Build, then run the app with args
   test                Vet our packages and run every package's tests
   test <name>         Run one test, e.g. formats.test_room_basic_fields
+  test-asan           Run the tests of the packages without a GUI under
+                      AddressSanitizer (Linux and macOS)
   debug-tests         Build each package's tests for a debugger, to build/<package>_test_debug
   debug-tests <name>  Build one test for a debugger, to build/single_test_debug
   help                This text
@@ -40,6 +42,10 @@ OUR_PACKAGES :: "main,formats,models,validation,clarity,settings,workspace,cli,l
 // compiled, Skald included, so their tests get -vet-style on our packages
 // instead.
 SKALD_PACKAGES :: [?]string{"components", "app"}
+
+// Packages whose tests also run under AddressSanitizer (test-asan): the
+// ones that read untrusted files and don't link SDL3 or Vulkan.
+ASAN_PACKAGES :: [?]string{"formats", "validation", "clarity", "settings", "workspace", "cli", "layout"}
 
 // Targets every `test` type-checks the program for, whatever the host, so
 // an OS-specific mistake shows up on any developer's machine. Windows is
@@ -71,6 +77,8 @@ main :: proc() {
 		run(command[:])
 	case "test":
 		test(rest[0] if len(rest) > 0 else "")
+	case "test-asan":
+		test_asan()
 	case "debug-tests":
 		debug_tests(rest[0] if len(rest) > 0 else "")
 	case "help", "-h", "--help":
@@ -108,6 +116,19 @@ test :: proc(name: string) {
 		append(&flags, ..extra)
 		append(&flags, fmt.tprintf("-out:build/%s_test%s", p, EXE))
 		odin(..flags[:])
+	}
+}
+
+// Run the GUI-free packages' tests under AddressSanitizer, which turns
+// out-of-bounds reads, use after free and the like into failures: the
+// parser reads untrusted area files, and its fuzz tests get a new random
+// seed every run (logged, to reproduce a failure).
+test_asan :: proc() {
+	when ODIN_OS == .Windows {
+		fail("test-asan runs on Linux and macOS")
+	}
+	for p in ASAN_PACKAGES {
+		odin("test", p, SKALD_COLLECTION, "-sanitize:address", "-debug", fmt.tprintf("-out:build/%s_asan_test", p))
 	}
 }
 
