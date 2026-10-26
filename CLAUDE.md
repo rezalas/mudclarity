@@ -479,6 +479,10 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- Odin checks a generic proc's body only where it is instantiated, so a
+  `$Msg` view's imports count as unused in the `components` test build.
+  Do the work that needs other packages (`strings`, `filepath`, ...) in
+  small non-generic helpers (see `area_inspector.odin`).
 - Components draw into whichever window they're given, so a panel can later
   move into its own window (dispatch on `ctx.window`).
 - `update` procs are pure (state and message in, state and command out) and
@@ -749,10 +753,15 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   (click) and opening (double-click) an area, following an exit from the
   map, and a new world resetting both
   (`center_test`).
+- Area notes (`area_notes_test`): the inspector's data, adding a note
+  (blank drafts add nothing; the saved file is read back), a draft dropped
+  with its area, loose files refused, and a failed save shown.
 - Corpus test (`app/corpus_test`) opens the whole world as the loading
   thread does (< 3 s) and times the area map on its own (< 250 ms).
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
-  length limits, and every byte value producing valid UTF-8.
+  length limits, and every byte value producing valid UTF-8;
+  `display_user_text` on UTF-8, invalid and cut-off sequences, controls,
+  and every byte pair.
 - Check the window itself by running it (see VS Code, or `xdotool` plus
   `import -window <id>` to screenshot only the app's own window).
 
