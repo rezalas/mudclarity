@@ -728,6 +728,9 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - `area_map_update`, `area_at_point` and `map_bounds` (`area_map_test`);
   the area map's names, links (exits both ways, portals, look-only and
   same-area exits left out), positions and marks in `world_map_test`.
+- Switching between the room graph and the area map, clicking an area,
+  following an exit from the map, and a new world resetting both
+  (`center_test`).
 - Corpus test (`app/corpus_test`) opens the whole world as the loading
   thread does (< 3 s) and times the area map on its own (< 250 ms).
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
