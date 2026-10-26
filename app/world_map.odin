@@ -15,13 +15,13 @@ import "../validation"
 
 /*
  The area map's data, computed once per load: a circle per area (named,
- sized by its rooms, marked by its worst open finding) and a link wherever
+ sized by its rooms, and marked by apply_filters) and a link wherever
  exits or placed portals lead from one area to another, laid out with
  layout.force_layout. Areas keep their indexes, as everywhere but the
  picker.
 */
 
-// Fill world.area_map. Needs rooms_by_vnum and findings. Everything is
+// Fill world.area_map. Needs rooms_by_vnum. Everything is
 // allocated with `allocator` (the world's arena).
 build_area_map :: proc(world: ^World, allocator: runtime.Allocator) {
 	areas := world.ws.areas
@@ -29,24 +29,13 @@ build_area_map :: proc(world: ^World, allocator: runtime.Allocator) {
 	m.names = make([]string, len(areas), allocator)
 	m.rooms = make([]int, len(areas), allocator)
 	m.is_unopened = make([]bool, len(areas), allocator)
-	m.marks = make([]components.Room_Mark, len(areas), allocator)
+	m.marks = make([]components.Room_Mark, len(areas), allocator) // Set by apply_filters
 	radii := make([]f32, len(areas), context.temp_allocator)
 	for area, i in areas {
 		m.names[i] = area_map_name(area.header.name, world.ws.names[i], allocator)
 		m.rooms[i] = len(area.rooms)
 		m.is_unopened[i] = strings.equal_fold(area.header.area_type, "unopened")
 		radii[i] = components.area_node_radius(m.rooms[i])
-	}
-	for f in world.findings {
-		a := f.diagnostic.area
-		if f.state == .Accepted || a < 0 || a >= len(areas) {
-			continue
-		}
-		mark := &m.marks[a]
-		// Severity order is Error < Warning < Info: lower is worse.
-		if !mark.has_finding || f.diagnostic.severity < mark.worst {
-			mark^ = {has_finding = true, worst = f.diagnostic.severity}
-		}
 	}
 	m.links = area_links(world, allocator)
 	edges := make([]layout.Graph_Edge, len(m.links), context.temp_allocator)

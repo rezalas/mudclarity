@@ -60,6 +60,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		}
 		world_close(out.world)
 		out.world = v.world
+		apply_filters(out.world, out.filters)
 		set_search(&out, "")
 		out.screen = .World
 		out.center = .Rooms
@@ -131,6 +132,30 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		set_search(&out, "")
 		return out, go_to_room(&out, v.room)
 
+	case Filters_Shown:
+		out.filters_open = v.is_open
+
+	case Severity_Shown:
+		f := out.filters
+		if v.is_shown {
+			f.severities += {v.severity}
+		} else {
+			f.severities -= {v.severity}
+		}
+		set_filters(&out, f)
+
+	case State_Shown:
+		f := out.filters
+		if v.is_shown {
+			f.states += {v.state}
+		} else {
+			f.states -= {v.state}
+		}
+		set_filters(&out, f)
+
+	case Filters_Reset:
+		set_filters(&out, DEFAULT_FILTERS)
+
 	case Note_Draft_Changed:
 		set_text(&out.note_draft, v.text)
 
@@ -187,6 +212,15 @@ add_area_note :: proc(s: ^State) -> (State, Effect) {
 	}
 	set_text(&s.note_draft, "")
 	return s^, Save_Review{ws}
+}
+
+// Change the filters and re-mark the open world's rooms and areas.
+@(private = "file")
+set_filters :: proc(s: ^State, filters: Filters) {
+	s.filters = filters
+	if s.world != nil {
+		apply_filters(s.world, filters)
+	}
 }
 
 // Select a room on the room graph, switching area if it is in another

@@ -28,7 +28,7 @@ Area_Inspector_Data :: struct {
 	header:  ^models.Area_Header,      // nil: no area
 	file:    string,                   // How area.lst names the file
 	rooms:   int,
-	open:    [validation.Severity]int, // Findings that aren't accepted
+	shown:   [validation.Severity]int, // Findings the host's filters show
 	notes:   []clarity.Note,           // This area's notes, oldest first
 	draft:   string,                   // The note being written
 	can_add: bool,                     // There is a review file to save notes in
@@ -54,8 +54,8 @@ area_inspector_view :: proc(ctx: ^skald.Ctx($Msg), d: Area_Inspector_Data, event
 	append(&parts, skald.text(area_name(h^), th.color.fg, th.font.size_lg, max_width = text_width(ctx)))
 	append(&parts, caption(ctx, area_facts(d), max_width = text_width(ctx)))
 	append(&parts, skald.button(ctx, "Open rooms", events.open, bg = th.color.primary, fg = th.color.on_primary))
-	append(&parts, section(ctx, "Open findings"))
-	append(&parts, findings_line(ctx, d.open))
+	append(&parts, section(ctx, "Findings shown"))
+	append(&parts, findings_line(ctx, d.shown))
 	if credits := trimmed(h.credits); credits != "" {
 		append(&parts, section(ctx, "Credits"))
 		append(&parts, caption(ctx, credits, max_width = text_width(ctx)))
@@ -138,15 +138,15 @@ area_facts :: proc(d: Area_Inspector_Data) -> string {
 }
 
 @(private = "file")
-findings_line :: proc(ctx: ^skald.Ctx($Msg), open: [validation.Severity]int) -> skald.View {
+findings_line :: proc(ctx: ^skald.Ctx($Msg), counts: [validation.Severity]int) -> skald.View {
 	th := ctx.theme
-	if open == {} {
+	if counts == {} {
 		return caption(ctx, "None.")
 	}
 	return skald.row(
-		skald.text(fmt.tprintf("%d errors", open[.Error]), th.color.danger if open[.Error] > 0 else th.color.fg_muted, th.font.size_md),
-		skald.text(fmt.tprintf("%d warnings", open[.Warning]), th.color.warning if open[.Warning] > 0 else th.color.fg_muted, th.font.size_md),
-		skald.text(fmt.tprintf("%d info", open[.Info]), th.color.fg_muted, th.font.size_md),
+		skald.text(fmt.tprintf("%d errors", counts[.Error]), th.color.danger if counts[.Error] > 0 else th.color.fg_muted, th.font.size_md),
+		skald.text(fmt.tprintf("%d warnings", counts[.Warning]), th.color.warning if counts[.Warning] > 0 else th.color.fg_muted, th.font.size_md),
+		skald.text(fmt.tprintf("%d info", counts[.Info]), th.color.fg_muted, th.font.size_md),
 		spacing = th.spacing.md,
 	)
 }

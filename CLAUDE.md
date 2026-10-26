@@ -34,7 +34,9 @@ mudclarity/
 │   ├── world.odin           # World: workspace + layouts, marks, labels, room lookup, findings
 │   ├── world_map.odin       # The area map's data: nodes, links between areas, positions
 │   ├── inspector_data.odin  # Resolve the selected room's exits and findings for the inspector
-│   ├── area_inspector_data.odin # The shown area's header, open findings and notes
+│   ├── area_inspector_data.odin # The shown area's header, filtered findings and notes
+│   ├── filters.odin         # Filters (severities, review states); marking rooms and areas
+│   ├── filters_view.odin    # The Filters button and popover
 │   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
 │   ├── search.odin          # Room search: the index and ranked matching
 │   ├── search_view.odin     # The search box and its results popover
@@ -457,7 +459,7 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 - **Screens**: Welcome (open an `area.lst` or drop files; recent files are planned) and
   World: a header (the world's name, its folder cut short with "…" so
   Close stays in the window, Close), summary counts, a toolbar
-  (Rooms/Areas switch, area picker, room search; filters planned) over the
+  (Rooms/Areas switch, area picker, room search, filters) over the
   inspector (left), room graph or area map with their zoom buttons
   (center) and findings log (right, planned). Review actions (accept,
   flag, reopen, issue) are planned as dialogs.
@@ -551,7 +553,7 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 ### Room graph
 
 - One area and one level at a time. Rooms are boxes outlined by their
-  worst finding that isn't accepted (red error, amber warning, muted info;
+  worst finding that the filters show (red error, amber warning, muted info;
   only `validation.ROOM_CHECKS` count), thicker in the accent colour when
   selected; a dot marks a displaced room. Exits: straight corridors, bent
   curves (translucent amber), arrowheads on one-way exits, up/down
@@ -568,6 +570,19 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
   no `Ctx`); `draw_text` takes the *baseline*, and its `size` is the cap
   height.
+
+### Filters
+
+- The toolbar's Filters popover has a box per severity and per review
+  state; Reset goes back to `DEFAULT_FILTERS` (everything but accepted
+  findings), and the button reads "Filters (changed)" otherwise. Escape,
+  Done or a click elsewhere closes it.
+- `State.filters` is a plain `Filters` value (two bit sets) so settings
+  can keep it (#27). Changing it runs `apply_filters`, which re-marks the
+  open world's rooms and areas in place (a pass over the findings); a
+  newly loaded world is marked with the filters in use. The room graph,
+  the area map and the area inspector's counts all follow it; the room
+  inspector still lists every finding of the room, with its state.
 
 ### Room search
 
@@ -589,10 +604,10 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
 
 ### Area map
 
-- The Rooms/Areas switch in the header (`State.center`) shows the map of
+- The Rooms/Areas switch in the toolbar (`State.center`) shows the map of
   every area in place of the room graph; the inspector stays. Each area is
-  a circle sized by its rooms and outlined by its worst finding that isn't
-  accepted (any check, not just room checks); unopened areas are faint and
+  a circle sized by its rooms and outlined by its worst finding that the
+  filters show (any check, not just room checks); unopened areas are faint and
   the area the room graph shows has an accent ring. Lines join areas that
   exits or placed portals connect: thicker for more, accent colour when
   portals are the only link, an arrowhead when they go one way only.
@@ -602,8 +617,8 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   graph.
   The map keeps its camera while hidden; a new world refits it.
 - While the map is up, the left panel is the **area inspector** for the
-  area shown: file, name, rooms, levels, vnums, type, climate, open
-  findings, credits, builders, an Open rooms button, and the area's notes
+  area shown: file, name, rooms, levels, vnums, type, climate, the
+  findings the filters show, credits, builders, an Open rooms button, and the area's notes
   (`kind = "area"`, vnum 0, as `mudclarity note` writes them) with a box
   to add one. Adding edits the review document in `step` and returns
   `Save_Review`; `command_for` saves on the GUI thread (the file is a few

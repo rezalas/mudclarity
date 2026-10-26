@@ -32,7 +32,7 @@ test_area_inspector_data :: proc(t: ^testing.T) {
 	testing.expect_value(t, d.file, "a.are")
 	testing.expect_value(t, d.rooms, 3)
 	// BASE_ROOMS: the broken exit; an orphan, a dead end, no entrance.
-	testing.expect_value(t, d.open, [validation.Severity]int{.Error = 1, .Warning = 3, .Info = 0})
+	testing.expect_value(t, d.shown, [validation.Severity]int{.Error = 1, .Warning = 3, .Info = 0})
 	testing.expect_value(t, len(d.notes), 0)
 	testing.expect(t, d.can_add)
 }

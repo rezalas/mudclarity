@@ -5,7 +5,9 @@
  */
 package app
 
+import "../clarity"
 import "../components"
+import "../validation"
 import "../workspace"
 
 Msg :: union {
@@ -20,6 +22,10 @@ Msg :: union {
 	Area_Map,
 	Search_Changed,
 	Search_Chosen,
+	Filters_Shown,
+	Severity_Shown,
+	State_Shown,
+	Filters_Reset,
 	Note_Draft_Changed,
 	Note_Added,
 	Review_Saved,
@@ -81,6 +87,26 @@ Search_Changed :: struct {
 Search_Chosen :: struct {
 	room: Room_Ref,
 }
+
+// The Filters button (or Done): open or close the popover.
+Filters_Shown :: struct {
+	is_open: bool,
+}
+
+// A severity's box in the Filters popover.
+Severity_Shown :: struct {
+	severity: validation.Severity,
+	is_shown: bool,
+}
+
+// A review state's box in the Filters popover.
+State_Shown :: struct {
+	state:    clarity.State,
+	is_shown: bool,
+}
+
+// Back to DEFAULT_FILTERS.
+Filters_Reset :: struct {}
 
 // The area inspector's note box changed (text in the frame arena).
 Note_Draft_Changed :: struct {

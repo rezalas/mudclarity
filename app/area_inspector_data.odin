@@ -8,9 +8,9 @@ package app
 import "../clarity"
 import "../components"
 
-// What the area inspector shows for the area shown: its header, open
-// findings (any check, as the map's outline counts them) and the notes the
-// review document has on it. Built each frame in the temp allocator.
+// What the area inspector shows for the area shown: its header, the
+// findings the filters show (any check, as the map's outline counts them)
+// and the notes the review document has on it. Built each frame in the temp allocator.
 area_inspector_data :: proc(s: State) -> components.Area_Inspector_Data {
 	world := s.world
 	ws := world.ws
@@ -26,8 +26,8 @@ area_inspector_data :: proc(s: State) -> components.Area_Inspector_Data {
 		can_add = ws.clarity_path != "",
 	}
 	for f in world.findings {
-		if f.diagnostic.area == s.area && f.state != .Accepted {
-			d.open[f.diagnostic.severity] += 1
+		if f.diagnostic.area == s.area && shows(s.filters, f) {
+			d.shown[f.diagnostic.severity] += 1
 		}
 	}
 	notes := make([dynamic]clarity.Note, context.temp_allocator)

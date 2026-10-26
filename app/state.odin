@@ -36,13 +36,15 @@ State :: struct {
 	search:        string, // The room search box
 	search_hits:   []Room_Ref, // Its best matches (owned; see set_search)
 	search_total:  int,        // How many rooms matched in all
+	filters:       Filters,    // Which findings the screens show
+	filters_open:  bool,       // The Filters popover is showing
 	generation:    int,    // Bumped by every load; older results are dropped
 	loading_path:  string, // What is loading, or ""
 	error:         string, // The last error to show, or ""
 }
 
 init :: proc() -> State {
-	return State{selected_room = -1, graph = components.room_graph_init(), area_map = components.area_map_init()}
+	return State{selected_room = -1, graph = components.room_graph_init(), area_map = components.area_map_init(), filters = DEFAULT_FILTERS}
 }
 
 // Show area `area` of the open world afresh: nothing selected, fitted.

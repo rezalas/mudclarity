@@ -94,8 +94,8 @@ header :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	)
 }
 
-// What to show and where: the Rooms/Areas switch, the area picker and
-// room search (whose results float over the screen).
+// What to show and where: the Rooms/Areas switch, the area picker, room
+// search and the filters (both with popovers that float over the screen).
 @(private = "file")
 toolbar :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	th := ctx.theme
@@ -104,6 +104,7 @@ toolbar :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, width = 360),
 		search_box(s, ctx),
 		search_results(s, ctx),
+		filters_control(s, ctx),
 		spacing = th.spacing.md,
 		cross_align = .Center,
 	)
