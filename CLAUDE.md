@@ -949,6 +949,11 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
   colours for light and dark backgrounds (nothing else changed),
   `theme_for` applying them, choosing a palette, and `severity_color`
   following the theme.
+- Room keys (`room_keys_test`, `room_graph_test`): arrows following
+  exits (staying put without one), up/down changing level, into another
+  area and back, Page keys changing level without an exit, Escape and a
+  click away deselecting while a drag doesn't, the keys listed in Help,
+  `pan_distance`, and `room_nearest_middle` per level.
 - Keys (`keys_test`): every chord the app registers is in the table,
   every binding has keys and an action and every scope has bindings,
   `chord_text` for the platform, and Help and Settings taking turns.
