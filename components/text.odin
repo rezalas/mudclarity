@@ -57,3 +57,42 @@ display_text :: proc(raw: string, keep_newlines := false, allocator := context.t
 	}
 	return strings.to_string(b)
 }
+
+/*
+ Text the user wrote (notes and issues in area.clarity), made safe to draw.
+ Unlike area files it is UTF-8, but the file can be edited by hand, so it
+ is checked the same way: invalid UTF-8 becomes U+FFFD, control characters
+ (C1 included) become spaces except newlines when `keep_newlines`, and
+ input longer than MAX_DISPLAY_INPUT is cut and ends in "...".
+
+ Allocated with `allocator` (by default the frame's temp allocator).
+*/
+display_user_text :: proc(raw: string, keep_newlines := false, allocator := context.temp_allocator) -> string {
+	input := raw
+	is_cut := len(input) > MAX_DISPLAY_INPUT
+	if is_cut {
+		input = input[:MAX_DISPLAY_INPUT]
+	}
+	b: strings.Builder
+	strings.builder_init(&b, 0, len(input) + 8, allocator)
+	for i := 0; i < len(input); {
+		r, size := utf8.decode_rune_in_string(input[i:])
+		switch {
+		case r == '\r' || r == '\n':
+			if r == '\r' && i + 1 < len(input) && input[i + 1] == '\n' {
+				size += 1
+			}
+			strings.write_byte(&b, '\n' if keep_newlines else ' ')
+		case r < 0x20 || (r >= 0x7F && r < 0xA0):
+			strings.write_byte(&b, ' ')
+		case:
+			// decode_rune gives RUNE_ERROR for invalid bytes (size 1).
+			strings.write_rune(&b, r)
+		}
+		i += size
+	}
+	if is_cut {
+		strings.write_string(&b, "...")
+	}
+	return strings.to_string(b)
+}
