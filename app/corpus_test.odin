@@ -11,6 +11,8 @@ import "core:path/filepath"
 import "core:testing"
 import "core:time"
 
+import "../components"
+
 /*
  Opens the whole Riftshadow world as the GUI's loading thread does.
  Skipped unless built with -define:MUDCLARITY_CORPUS_DIR=/path/to/riftshadow/area.
@@ -46,5 +48,8 @@ open_corpus :: proc(t: ^testing.T, dir: string) {
 	testing.expect_value(t, len(m.positions), len(world.ws.areas))
 	testing.expect(t, len(m.links) > 0)
 	testing.expectf(t, time.duration_seconds(map_time) < 0.25, "the area map took %v", map_time)
-	log.infof("corpus: world of %d areas opened in %v; area map with %d links in %v", len(world.ws.areas), elapsed, len(m.links), map_time)
+	// Areas without links once ended up ~10,000 units out.
+	lo, hi := components.map_bounds(m.positions, m.rooms)
+	testing.expectf(t, hi.x - lo.x < 6000 && hi.y - lo.y < 6000, "the area map is %v across", hi - lo)
+	log.infof("corpus: world of %d areas opened in %v; area map with %d links, %v across, in %v", len(world.ws.areas), elapsed, len(m.links), hi - lo, map_time)
 }
