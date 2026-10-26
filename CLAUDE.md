@@ -722,6 +722,11 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   whole world). Ranked: the vnum in every area that defines it, then names
   equal to the query, starting with it, and containing it. The best
   `SEARCH_LIMIT` show in a popover with a count of the rest.
+- **Keys**: `/` (when not typing) or Ctrl+F (Cmd+F) jump to the box
+  (`search_shortcuts`, which focuses it directly; `SEARCH_SHORTCUTS`).
+  In the box, Up and Down move a highlight through the results
+  (`search_highlight`, reset by a new query) and Enter chooses it; they
+  are taken from `keys_pressed` before the text box sees them.
 - Choosing a result goes to the room (`go_to_room`, shared with following
   an exit): switch to the room graph and to the room's area, select it,
   centre on it. Escape or the clear button empties the box; a new world

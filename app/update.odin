@@ -142,6 +142,9 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 	case Search_Changed:
 		set_search(&out, v.text)
 
+	case Search_Highlighted:
+		out.search_highlight = clamp(v.index, 0, max(len(out.search_hits) - 1, 0))
+
 	case Search_Chosen:
 		set_search(&out, "")
 		return out, go_to_room(&out, v.room)

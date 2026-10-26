@@ -23,6 +23,7 @@ Msg :: union {
 	Area_Map,
 	Search_Changed,
 	Search_Chosen,
+	Search_Highlighted,
 	Filters_Shown,
 	Severity_Shown,
 	State_Shown,
@@ -90,6 +91,11 @@ Area_Map :: struct {
 // The room search box changed (text in the frame arena).
 Search_Changed :: struct {
 	text: string,
+}
+
+// Up or Down in the search box moved the highlight to result `index`.
+Search_Highlighted :: struct {
+	index: int,
 }
 
 // A room search result was chosen.

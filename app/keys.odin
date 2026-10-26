@@ -27,6 +27,7 @@ Key_Scope :: enum u8 {
 	Settings,
 	Room_Graph,
 	Area_Map,
+	Search,
 }
 
 KEY_SCOPE_TITLES := [Key_Scope]string {
@@ -35,6 +36,7 @@ KEY_SCOPE_TITLES := [Key_Scope]string {
 	.Settings          = "In Settings",
 	.Room_Graph        = "On the room graph (Tab to it, or click it)",
 	.Area_Map          = "On the area map (Tab to it, or click it)",
+	.Search            = "In the room search box",
 }
 
 Key_Binding :: struct {
@@ -52,6 +54,8 @@ SETTINGS_SHORTCUT :: skald.Shortcut{key = .Comma, mods = {COMMAND_KEY}}
 LARGER_TEXT_SHORTCUTS := [?]skald.Shortcut{{key = .Equals, mods = {COMMAND_KEY}}, {key = .Equals, mods = {COMMAND_KEY, .Shift}}}
 SMALLER_TEXT_SHORTCUT :: skald.Shortcut{key = .Minus, mods = {COMMAND_KEY}}
 RESET_TEXT_SHORTCUT :: skald.Shortcut{key = .N0, mods = {COMMAND_KEY}}
+// Jump to room search: Ctrl+F (Cmd+F) anywhere, `/` when not typing.
+SEARCH_SHORTCUTS := [?]skald.Shortcut{{key = .F, mods = {COMMAND_KEY}}, {key = .Slash}}
 
 // "?" also opens Help, when no text box has focus (so it can still be
 // typed in one). Skald only reports typed text while a text box has
@@ -71,11 +75,15 @@ key_bindings :: proc() -> []Key_Binding {
 		Key_Binding{chords = LARGER_TEXT_SHORTCUTS[:1], action = "Larger text (10% at a time)", scope = .Anywhere},
 		Key_Binding{chords = one(SMALLER_TEXT_SHORTCUT), action = "Smaller text", scope = .Anywhere},
 		Key_Binding{chords = one(RESET_TEXT_SHORTCUT), action = "Text size back to 100%", scope = .Anywhere},
+		Key_Binding{chords = SEARCH_SHORTCUTS[:], action = "Find a room: jump to the search box", scope = .Anywhere},
 		Key_Binding{keys = "Tab, Shift+Tab", action = "Move to the next or previous button, box or list", scope = .Dialogs_And_Lists},
 		Key_Binding{keys = "Enter, Space", action = "Press the focused button or tick the focused box", scope = .Dialogs_And_Lists},
 		Key_Binding{keys = "Up, Down, Enter", action = "Choose in an open dropdown, such as the area picker", scope = .Dialogs_And_Lists},
 		Key_Binding{keys = "Esc", action = "Close a dialog or popover, or clear the search box", scope = .Dialogs_And_Lists},
 		Key_Binding{keys = "Left, Right", action = "Move the text size slider in 5% steps", scope = .Settings},
+		Key_Binding{keys = "Up, Down", action = "Move through the results", scope = .Search},
+		Key_Binding{keys = "Enter", action = "Go to the highlighted room", scope = .Search},
+		Key_Binding{keys = "Esc", action = "Clear the search", scope = .Search},
 	)
 	for hint in components.ROOM_GRAPH_KEYS {
 		append(&out, Key_Binding{keys = hint.keys, action = hint.action, scope = .Room_Graph})
