@@ -22,7 +22,7 @@ USAGE :: `usage: build.sh | build.bat [command]
   test                Vet our packages and run every package's tests
   test <name>         Run one test, e.g. formats.test_room_basic_fields
   test-asan           Run the tests of the packages without a GUI under
-                      AddressSanitizer (Linux and macOS)
+                      AddressSanitizer (Linux; see CLAUDE.md for macOS)
   debug-tests         Build each package's tests for a debugger, to build/<package>_test_debug
   debug-tests <name>  Build one test for a debugger, to build/single_test_debug
   help                This text
