@@ -129,7 +129,9 @@ mudclarity/
 ├── test_data/               # Real and hand-made .are files for tests
 ├── vendor/skald/            # Skald GUI library (git submodule)
 ├── .vscode/                 # Tasks, launch (debug) configs, recommended extensions
-├── .github/                 # CI workflow (ci.yml) and Dependabot config
+├── .github/                 # CI (ci.yml), releases (release.yml), Dependabot config
+├── packaging/               # READMEs that go into release packages, per OS
+├── LICENSE                  # MIT
 ├── ols.json                 # Odin language server: the `gui` collection
 └── CLAUDE.md                # This file
 ```
@@ -832,6 +834,7 @@ wrappers. The examples use `./build.sh`; on Windows use `build.bat` and
 ./build.sh run [args]   # Build and run (args go to mudclarity)
 ./build.sh test     # Vet, cross-OS type-check, and run tests (see Testing)
 ./build.sh test-asan    # GUI-free packages' tests under AddressSanitizer (Linux)
+./build.sh release      # Optimised build staged for a package in build/release/mudclarity/
 ./build.sh debug-tests [name]         # Test binaries for a debugger (see VS Code)
 ./build.sh help     # The build commands
 ./build/mudclarity                    # Open the GUI
@@ -904,6 +907,27 @@ build tool's commands, as on a developer's machine:
   dependency is a submodule, so they would pass without scanning
   anything. AddressSanitizer and the fuzz tests are the security checks;
   turn on GitHub's secret scanning in the repository settings.
+
+### Releases
+
+- `./build.sh release` makes an optimised build (`-o:speed`, no `-debug`,
+  so no leak-tracking allocator) in `build/release/mudclarity/`, staged
+  with `LICENSE.txt` and the OS's `packaging/README-<os>.txt`; on Windows
+  also `SDL3.dll` (from Odin) and `LICENSE-SDL3.txt`. Linux packages don't
+  bundle SDL3: users install SDL3 3.2+ and a Vulkan driver from their
+  distribution and keep them updated (the README says so). The Windows
+  build stays a console program, since the same executable is the CLI.
+- CI's Linux (test) and Windows jobs build the package and keep it as a
+  run artifact for 14 days (`mudclarity-linux-amd64`,
+  `mudclarity-windows-amd64`), to try a branch's build.
+- **Publishing**: push a tag `vX.Y.Z` (a hyphen, `v1.0.0-rc.1`, makes a
+  pre-release). `release.yml` runs every CI job (it calls `ci.yml`), then
+  packages the two artifacts as `mudclarity-<tag>-linux-amd64.tar.gz` and
+  `mudclarity-<tag>-windows-amd64.zip`, writes `SHA256SUMS`, signs a build
+  provenance attestation for each package (`gh attestation verify <file>
+  --repo rezalas/mudclarity` checks one), and creates the GitHub release
+  with generated notes. Nothing is published if any CI job fails.
+- macOS packages come later, with Apple signing and notarization.
 
 ### Dependencies
 
