@@ -8,6 +8,7 @@ package app
 import "gui:skald"
 
 import "../clarity"
+import "../components"
 import "../validation"
 
 /*
@@ -16,6 +17,7 @@ import "../validation"
 */
 
 FILTERS_BUTTON_ID :: "filters-button"
+// Sizes at the default text size; scaled by components.ui_scale.
 FILTERS_CARD_WIDTH :: f32(220)
 FILTERS_LINE_HEIGHT :: f32(28)
 FILTERS_BUTTONS_HEIGHT :: f32(40)
@@ -53,34 +55,34 @@ filters_control :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		skald.send(ctx, Msg(Filters_Shown{false}))
 	}
 
+	k := components.ui_scale(th)
 	pad := th.spacing.md
+	card_width, line_height, buttons_height := FILTERS_CARD_WIDTH * k, FILTERS_LINE_HEIGHT * k, FILTERS_BUTTONS_HEIGHT * k
+	line := proc(child: skald.View, height: f32) -> skald.View {
+		return skald.col(child, height = height, main_align = .Center)
+	}
 	lines := make([dynamic]skald.View, context.temp_allocator)
-	append(&lines, line(skald.text("Severity", th.color.fg, th.font.size_md)))
+	append(&lines, line(skald.text("Severity", th.color.fg, th.font.size_md), line_height))
 	for severity in validation.Severity {
 		box := skald.checkbox(ctx, severity in s.settings.filters.severities, SEVERITY_LABELS[severity], severity, severity_shown)
-		append(&lines, line(box))
+		append(&lines, line(box, line_height))
 	}
-	append(&lines, line(skald.text("Review state", th.color.fg, th.font.size_md)))
+	append(&lines, line(skald.text("Review state", th.color.fg, th.font.size_md), line_height))
 	for state in clarity.State {
 		box := skald.checkbox(ctx, state in s.settings.filters.states, STATE_LABELS[state], state, state_shown)
-		append(&lines, line(box))
+		append(&lines, line(box, line_height))
 	}
 	buttons := skald.row(
 		skald.button(ctx, "Reset", Msg(Filters_Reset{}), bg = th.color.bg, fg = th.color.fg, disabled = s.settings.filters == DEFAULT_FILTERS),
 		skald.button(ctx, "Done", Msg(Filters_Shown{false}), bg = th.color.primary, fg = th.color.on_primary),
 		spacing = th.spacing.sm,
 	)
-	append(&lines, skald.col(buttons, height = FILTERS_BUTTONS_HEIGHT, main_align = .End))
-	height := 2 * pad + f32(len(lines) - 1) * FILTERS_LINE_HEIGHT + FILTERS_BUTTONS_HEIGHT
-	card := skald.col(..lines[:], padding = pad, width = FILTERS_CARD_WIDTH, height = height, bg = th.color.surface, radius = th.radius.md)
+	append(&lines, skald.col(buttons, height = buttons_height, main_align = .End))
+	height := 2 * pad + f32(len(lines) - 1) * line_height + buttons_height
+	card := skald.col(..lines[:], padding = pad, width = card_width, height = height, bg = th.color.surface, radius = th.radius.md)
 	offset := [2]f32{0, 4}
-	skald.widget_stamp_overlay_rect(ctx.widgets, skald.overlay_placement_rect(ctx, anchor, {FILTERS_CARD_WIDTH, height}, offset = offset))
+	skald.widget_stamp_overlay_rect(ctx.widgets, skald.overlay_placement_rect(ctx, anchor, {card_width, height}, offset = offset))
 	return skald.row(button, skald.overlay(anchor, card, offset = offset))
-}
-
-@(private = "file")
-line :: proc(child: skald.View) -> skald.View {
-	return skald.col(child, height = FILTERS_LINE_HEIGHT, main_align = .Center)
 }
 
 @(private = "file")

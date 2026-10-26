@@ -29,7 +29,7 @@ welcome_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 
 	card := skald.col(
 		components.heading(ctx, "Mud Clarity", is_large = true),
-		components.caption(ctx, "See a Riftshadow world's rooms and how they connect, and what is wrong with them.", max_width = 440),
+		components.caption(ctx, "See a Riftshadow world's rooms and how they connect, and what is wrong with them.", max_width = 440 * components.ui_scale(th)),
 		skald.spacer(th.spacing.lg),
 		action,
 		skald.spacer(th.spacing.sm),

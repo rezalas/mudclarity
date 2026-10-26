@@ -35,6 +35,7 @@ Msg :: union {
 	Dismiss_Warning,
 	Settings_Shown,
 	Theme_Chosen,
+	Text_Size_Chosen,
 	Settings_Saved,
 	Theme_Changed,
 	Quit_Requested,
@@ -147,6 +148,11 @@ Theme_Chosen :: struct {
 	theme: settings.Theme_Choice,
 }
 
+// The Text size choice in the Settings dialog, or Ctrl+= / Ctrl+- / Ctrl+0.
+Text_Size_Chosen :: struct {
+	size: settings.Text_Size,
+}
+
 // The settings file was written. `error` is "" on success, else
 // heap-allocated text that now belongs to update.
 Settings_Saved :: struct {
@@ -186,7 +192,11 @@ Load_Request :: struct {
 	paths:      []string,
 }
 
-Follow_System_Theme :: struct {}
+// The OS switched light/dark and the settings follow it: restyle with
+// the OS's theme at the chosen text size.
+Follow_System_Theme :: struct {
+	settings: settings.Settings,
+}
 
 // Restyle the app for `settings` and save them to the store's file.
 Apply_Settings :: struct {

@@ -485,8 +485,13 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
 - The **Settings dialog** (`app/settings_view.odin`) is a modal opened by
   the Settings button (Welcome and World headers) or Ctrl+, (Cmd+, on
   macOS). Changes apply at once, so it has only Close (or Escape). It says
-  where the file is. Today: Theme (follow the system, light, dark); with
-  a chosen theme, the OS switching light/dark no longer changes it.
+  where the file is. Theme: follow the system, light, dark (with a chosen
+  theme, the OS switching light/dark no longer changes it). Text size:
+  90% to 200% (`settings.TEXT_SCALES`), also Ctrl+= / Ctrl+- / Ctrl+0
+  (Cmd on macOS) anywhere. `theme_for` builds the theme for the settings:
+  the chosen or OS theme through `scaled_theme` (fonts, spacing, radii),
+  also when following an OS light/dark switch. The World toolbar is a
+  `wrap_row`, so at large sizes it wraps instead of running off.
 - Testing the GUI by hand changes the settings file: point
   `XDG_CONFIG_HOME` at a temp folder (Linux) so your own isn't touched.
 

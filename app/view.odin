@@ -22,6 +22,7 @@ view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	if !s.settings_open {
 		skald.shortcut(ctx, SETTINGS_SHORTCUT, Msg(Settings_Shown{true}))
 	}
+	text_size_shortcuts(s, ctx)
 
 	children := make([dynamic]skald.View, context.temp_allocator)
 	if s.error != "" {

@@ -191,6 +191,11 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		next.theme = v.theme
 		return change_settings(&out, next)
 
+	case Text_Size_Chosen:
+		next := out.settings
+		next.text_size = v.size
+		return change_settings(&out, next)
+
 	case Settings_Saved:
 		defer delete(v.error, runtime.heap_allocator())
 		if v.error != "" {
@@ -202,7 +207,7 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 	case Theme_Changed:
 		// Only when following the OS; a chosen theme stays.
 		if out.settings.theme == .System {
-			return out, Follow_System_Theme{}
+			return out, Follow_System_Theme{out.settings}
 		}
 
 	case Quit_Requested:

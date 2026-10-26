@@ -54,16 +54,36 @@ settings_store_close :: proc(store: ^Settings_Store) {
 	free(store)
 }
 
-// The Skald theme the settings ask for.
+// The Skald theme the settings ask for: light, dark or the OS's, at the
+// chosen text size.
 theme_for :: proc(s: settings.Settings) -> skald.Theme {
+	base: skald.Theme
 	switch s.theme {
 	case .Light:
-		return skald.theme_light()
+		base = skald.theme_light()
 	case .Dark:
-		return skald.theme_dark()
+		base = skald.theme_dark()
 	case .System:
+		base = skald.theme_system()
 	}
-	return skald.theme_system()
+	return scaled_theme(base, settings.TEXT_SCALES[s.text_size])
+}
+
+// `base` with its font sizes, spacing and corner radii multiplied by
+// `factor` (colours unchanged), so the whole app grows with its text.
+// Pill radii stay pills.
+scaled_theme :: proc(base: skald.Theme, factor: f32) -> skald.Theme {
+	t := base
+	for size in ([]^f32{&t.font.size_xs, &t.font.size_sm, &t.font.size_md, &t.font.size_lg, &t.font.size_xl, &t.font.size_display}) {
+		size^ *= factor
+	}
+	for step in ([]^f32{&t.spacing.xs, &t.spacing.sm, &t.spacing.md, &t.spacing.lg, &t.spacing.xl}) {
+		step^ *= factor
+	}
+	for radius in ([]^f32{&t.radius.sm, &t.radius.md, &t.radius.lg, &t.radius.xl}) {
+		radius^ *= factor
+	}
+	return t
 }
 
 // Save `s` to the store's file. A file from a newer version is left alone
