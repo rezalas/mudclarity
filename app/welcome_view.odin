@@ -39,5 +39,9 @@ welcome_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		bg = th.color.surface,
 		radius = th.radius.lg,
 	)
-	return skald.col(card, main_align = .Center, cross_align = .Center)
+	return skald.col(
+		skald.row(skald.flex(1, skald.spacer(0)), settings_button(ctx)),
+		skald.flex(1, skald.col(card, main_align = .Center, cross_align = .Center)),
+		cross_align = .Stretch,
+	)
 }

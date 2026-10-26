@@ -12,6 +12,7 @@ import "gui:skald"
 
 import "../clarity"
 import "../components"
+import "../settings"
 import "../workspace"
 
 // The update Skald calls: step, then turn the effect into a Command.
@@ -179,15 +180,36 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 	case Dismiss_Error:
 		set_text(&out.error, "")
 
+	case Dismiss_Warning:
+		set_text(&out.warning, "")
+
+	case Settings_Shown:
+		out.settings_open = v.is_open
+
+	case Theme_Chosen:
+		next := out.settings
+		next.theme = v.theme
+		return change_settings(&out, next)
+
+	case Settings_Saved:
+		defer delete(v.error, runtime.heap_allocator())
+		if v.error != "" {
+			set_text(&out.error, v.error)
+		}
+
 	case Redraw:
 
 	case Theme_Changed:
-		return out, Follow_System_Theme{}
+		// Only when following the OS; a chosen theme stays.
+		if out.settings.theme == .System {
+			return out, Follow_System_Theme{}
+		}
 
 	case Quit_Requested:
 		world_close(out.world)
 		out.world = nil
 		set_text(&out.error, "")
+		set_text(&out.warning, "")
 		set_text(&out.loading_path, "")
 		set_text(&out.note_draft, "")
 		set_search(&out, "")
@@ -212,6 +234,16 @@ add_area_note :: proc(s: ^State) -> (State, Effect) {
 	}
 	set_text(&s.note_draft, "")
 	return s^, Save_Review{ws}
+}
+
+// Use new settings: apply and save them, unless nothing changed.
+@(private = "file")
+change_settings :: proc(s: ^State, next: settings.Settings) -> (State, Effect) {
+	if next == s.settings {
+		return s^, nil
+	}
+	s.settings = next
+	return s^, Apply_Settings{s.store, next}
 }
 
 // Change the filters and re-mark the open world's rooms and areas.

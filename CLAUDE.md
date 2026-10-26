@@ -39,6 +39,8 @@ mudclarity/
 │   ├── filters_view.odin    # The Filters button and popover
 │   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
 │   ├── search.odin          # Room search: the index and ranked matching
+│   ├── settings_store.odin  # The settings file at run time; theme_for; save_settings
+│   ├── settings_view.odin   # The Settings dialog, button and shortcut
 │   ├── search_view.odin     # The search box and its results popover
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
@@ -128,6 +130,7 @@ Dependency direction:
 ```text
 main ─┬─ cli ─────────────────┐
       └─ app ─┬─ components ──┴─ workspace → clarity → validation → formats → models
+              ├─ settings → clarity
               └─ layout → models
 ```
 
@@ -470,6 +473,22 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   never saved over.
 - Saves create the folder if needed and go to a temp file renamed into
   place, like `area.clarity`.
+- In the GUI, `run` loads the file before the window opens (it is tiny)
+  into a heap `Settings_Store` (`app/settings_store.odin`) that lives
+  until the window closes; `init` starts from it (`init_with(store)`, so
+  tests use stores of their own) and shows its warning in a banner.
+  `State.settings` holds the current values. Every change goes through
+  `change_settings`, which returns `Apply_Settings`: `command_for`
+  restyles the app (`theme_for`) and saves on the GUI thread. A save
+  refused because the file is newer stays quiet (the load warning said
+  so); other failures show in the error banner.
+- The **Settings dialog** (`app/settings_view.odin`) is a modal opened by
+  the Settings button (Welcome and World headers) or Ctrl+, (Cmd+, on
+  macOS). Changes apply at once, so it has only Close (or Escape). It says
+  where the file is. Today: Theme (follow the system, light, dark); with
+  a chosen theme, the OS switching light/dark no longer changes it.
+- Testing the GUI by hand changes the settings file: point
+  `XDG_CONFIG_HOME` at a temp folder (Linux) so your own isn't touched.
 
 ## Visualization (Skald)
 

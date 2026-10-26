@@ -8,6 +8,7 @@ package app
 import "core:strings"
 
 import "../components"
+import "../settings"
 
 Screen :: enum u8 {
 	Welcome, // Nothing open: open or drop a world
@@ -41,10 +42,32 @@ State :: struct {
 	generation:    int,    // Bumped by every load; older results are dropped
 	loading_path:  string, // What is loading, or ""
 	error:         string, // The last error to show, or ""
+	warning:       string, // A warning to show (e.g. unreadable settings), or ""
+	settings:      settings.Settings,  // The current settings (settings_store.odin)
+	store:         ^Settings_Store,    // Where they are saved; nil saves nothing
+	settings_open: bool,               // The Settings dialog is showing
 }
 
 init :: proc() -> State {
-	return State{selected_room = -1, graph = components.room_graph_init(), area_map = components.area_map_init(), filters = DEFAULT_FILTERS}
+	return init_with(startup_store)
+}
+
+// The first state, with the settings `store` loaded (nil: the defaults,
+// saved nowhere) and its warning, if any, showing.
+init_with :: proc(store: ^Settings_Store) -> State {
+	s := State {
+		selected_room = -1,
+		graph         = components.room_graph_init(),
+		area_map      = components.area_map_init(),
+		filters       = DEFAULT_FILTERS,
+		settings      = settings.DEFAULTS,
+		store         = store,
+	}
+	if s.store != nil {
+		s.settings = s.store.loaded.settings
+		set_text(&s.warning, s.store.loaded.warning)
+	}
+	return s
 }
 
 // Show area `area` of the open world afresh: nothing selected, fitted.

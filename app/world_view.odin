@@ -88,6 +88,7 @@ header :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	return skald.row(
 		components.heading(ctx, title, is_large = true),
 		skald.flex(1, skald.text(location, th.color.fg_muted, th.font.size_md, overflow = .Ellipsis)),
+		settings_button(ctx),
 		skald.button(ctx, "Close", Msg(Close_World{}), bg = th.color.surface, fg = th.color.fg),
 		spacing = th.spacing.md,
 		cross_align = .Center,

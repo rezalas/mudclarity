@@ -28,11 +28,13 @@ run :: proc(paths: []string) {
 		defer report_leaks(&track)
 	}
 	startup_paths = paths
+	startup_store = settings_store_open()
+	defer settings_store_close(startup_store)
 	skald.run(
 		skald.App(State, Msg) {
 			title = "Mud Clarity",
 			size = {1280, 800},
-			theme = skald.theme_system(),
+			theme = theme_for(startup_store.loaded.settings),
 			init = init,
 			update = update,
 			view = view,

@@ -7,6 +7,7 @@ package app
 
 import "../clarity"
 import "../components"
+import "../settings"
 import "../validation"
 import "../workspace"
 
@@ -31,6 +32,10 @@ Msg :: union {
 	Review_Saved,
 	Exit_Followed,
 	Dismiss_Error,
+	Dismiss_Warning,
+	Settings_Shown,
+	Theme_Chosen,
+	Settings_Saved,
 	Theme_Changed,
 	Quit_Requested,
 	Redraw,
@@ -129,6 +134,25 @@ Exit_Followed :: struct {
 
 Dismiss_Error :: struct {}
 
+// The warning banner's dismiss button.
+Dismiss_Warning :: struct {}
+
+// The Settings button, Ctrl+, (Cmd+, on macOS), Close or Escape.
+Settings_Shown :: struct {
+	is_open: bool,
+}
+
+// The Theme choice in the Settings dialog.
+Theme_Chosen :: struct {
+	theme: settings.Theme_Choice,
+}
+
+// The settings file was written. `error` is "" on success, else
+// heap-allocated text that now belongs to update.
+Settings_Saved :: struct {
+	error: string,
+}
+
 // The OS switched between light and dark.
 Theme_Changed :: struct {}
 
@@ -148,6 +172,7 @@ Effect :: union {
 	Load_Request,
 	Follow_System_Theme,
 	Save_Review,
+	Apply_Settings,
 	Quit,
 	Redraw_Soon,
 }
@@ -162,6 +187,12 @@ Load_Request :: struct {
 }
 
 Follow_System_Theme :: struct {}
+
+// Restyle the app for `settings` and save them to the store's file.
+Apply_Settings :: struct {
+	store:    ^Settings_Store,
+	settings: settings.Settings,
+}
 
 // Write the world's review file (area.clarity) after an edit.
 Save_Review :: struct {
