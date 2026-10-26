@@ -558,6 +558,12 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   its events (the room inspector's `on_follow`). The room graph can use
   `map_msg` because its canvas keeps no `Ctx`.
 - A zero-size `scroll` fills only a *flex* parent: wrap it in `flex(1, ...)`.
+- **Build a dialog's or popover's content only while it is open.** Skald's
+  `dialog(open = false)` discards its content, but the widgets were still
+  built, so they still handled input, against `last_rect`s that an
+  auto-id may share with a visible widget: a click near the search box
+  once chose a text size in the closed Settings dialog. Return
+  `dialog(ctx, false, spacer(0), ...)` while closed (it restores focus).
 - **Colours that carry meaning** come from the theme: a severity's
   colour only through `components.severity_color` (danger, warning,
   muted text), the selection and accents from `primary`. Never hard-code

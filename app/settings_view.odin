@@ -55,6 +55,11 @@ settings_button :: proc(ctx: ^skald.Ctx(Msg)) -> skald.View {
 
 // The dialog, or nothing while it is closed.
 settings_dialog :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
+	if !s.settings_open {
+		// Build nothing while closed: widgets built here would still
+		// handle input, against rects left over from other widgets.
+		return skald.dialog(ctx, false, skald.spacer(0), settings_closed)
+	}
 	th := ctx.theme
 	labels := THEME_LABELS
 	content := skald.col(
