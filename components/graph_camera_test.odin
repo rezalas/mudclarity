@@ -68,3 +68,24 @@ test_fit_centres_and_never_zooms_in :: proc(t: ^testing.T) {
 	right := to_screen(camera, {}, cell_center({40, 0, 0}) + ROOM_SIZE / 2)
 	testing.expect(t, left.x >= FIT_MARGIN - 0.01 && right.x <= size.x - FIT_MARGIN + 0.01)
 }
+
+@(test)
+test_zoom_step_keeps_the_centre :: proc(t: ^testing.T) {
+	// What the zoom buttons send: a step about the canvas's centre.
+	size := [2]f32{800, 600}
+	centre := size / 2
+	camera := Camera{pan = {-120, 35}, zoom = 0.8}
+	before := to_graph(camera, {}, centre)
+	zoomed := zoom_at(camera, ZOOM_STEP, centre)
+	testing.expect_value(t, zoomed.zoom, 0.8 * ZOOM_STEP)
+	after := to_graph(zoomed, {}, centre)
+	testing.expectf(t, abs(after.x - before.x) < 0.001 && abs(after.y - before.y) < 0.001, "the centre moved from %v to %v", before, after)
+	back := zoom_at(zoomed, 1 / ZOOM_STEP, centre)
+	testing.expectf(t, abs(back.zoom - camera.zoom) < 0.0001, "zooming out again gives %v", back.zoom)
+
+	// Steps stop at the limits, where the buttons are disabled.
+	high := Camera{zoom = MAX_ZOOM}
+	testing.expect_value(t, zoom_at(high, ZOOM_STEP, centre).zoom, MAX_ZOOM)
+	low := Camera{zoom = MIN_ZOOM}
+	testing.expect_value(t, zoom_at(low, 1 / ZOOM_STEP, centre).zoom, MIN_ZOOM)
+}
