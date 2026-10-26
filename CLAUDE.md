@@ -1002,6 +1002,10 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Corpus test (`app/corpus_test`) opens the whole world as the loading
   thread does (< 3 s), times the area map on its own (< 250 ms) and a
   one-letter search over every room (< 10 ms).
+- Painting can be tested without a GPU: a `skald.Renderer` with a
+  `Window_Target` and a batch only records vertices (as Skald's
+  `draw_vector_test` does; see `markers_test`). Severity markers are
+  checked to draw, to differ in shape, and to stay in their place.
 - `display_text` is tested on Latin-1, control and C1 bytes, newlines,
   length limits, and every byte value producing valid UTF-8;
   `display_user_text` on UTF-8, invalid and cut-off sequences, controls,
