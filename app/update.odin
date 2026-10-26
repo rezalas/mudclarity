@@ -12,6 +12,7 @@ import "gui:skald"
 
 import "../clarity"
 import "../components"
+import "../models"
 import "../settings"
 import "../workspace"
 
@@ -90,9 +91,21 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		if out.world == nil {
 			return out, nil
 		}
-		if click, is_click := v.msg.(components.Room_Clicked); is_click {
-			out.selected_room = click.room
+		#partial switch e in v.msg {
+		case components.Room_Clicked:
+			out.selected_room = e.room
 			return out, nil
+		case components.Room_Deselected:
+			out.selected_room = -1
+			return out, nil
+		case components.Exit_Key:
+			return out, follow_exit_key(&out, e.direction)
+		case components.Pan_Ended:
+			// A press on empty space that hardly moved was a click: click
+			// away to deselect (#46). A real drag keeps the selection.
+			if out.graph.is_panning && out.graph.pan_distance < components.CLICK_SLOP {
+				out.selected_room = -1
+			}
 		}
 		out.graph = components.room_graph_update(out.graph, v.msg, &out.world.layouts[out.area])
 
@@ -287,6 +300,28 @@ set_filters :: proc(s: ^State, filters: Filters) -> (State, Effect) {
 	next := s.settings
 	next.filters = filters
 	return change_settings(s, next)
+}
+
+// Follow the selected room's exit in `direction`, into another area if it
+// leads there. With no such exit (or a look-only one), Page Up and Page
+// Down show the level above or below instead; other directions do nothing.
+@(private = "file")
+follow_exit_key :: proc(s: ^State, direction: models.Direction) -> Effect {
+	area := s.world.ws.areas[s.area]
+	if s.selected_room < 0 || s.selected_room >= len(area.rooms) {
+		return nil
+	}
+	if exit, ok := area.rooms[s.selected_room].exits[direction].?; ok && exit.target != 0 {
+		if ref, found := s.world.rooms_by_vnum[exit.target]; found {
+			return go_to_room(s, ref)
+		}
+		return nil // A missing room: nowhere to go
+	}
+	if direction == .Up || direction == .Down {
+		level := s.graph.level + (1 if direction == .Up else -1)
+		s.graph = components.room_graph_update(s.graph, components.Level_Changed{level}, &s.world.layouts[s.area])
+	}
+	return nil
 }
 
 // Select a room on the room graph, switching area if it is in another

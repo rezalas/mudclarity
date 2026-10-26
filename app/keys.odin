@@ -9,6 +9,8 @@ import "core:strings"
 
 import "gui:skald"
 
+import "../components"
+
 /*
  Every keyboard shortcut, in one table that the Help dialog shows. Chords
  the app registers itself (SETTINGS_SHORTCUT, the text size keys, ...)
@@ -23,12 +25,14 @@ Key_Scope :: enum u8 {
 	Anywhere,
 	Dialogs_And_Lists, // Skald's own widget keys
 	Settings,
+	Room_Graph,
 }
 
 KEY_SCOPE_TITLES := [Key_Scope]string {
 	.Anywhere          = "Anywhere",
 	.Dialogs_And_Lists = "Buttons, boxes and lists",
 	.Settings          = "In Settings",
+	.Room_Graph        = "On the room graph (Tab to it, or click it)",
 }
 
 Key_Binding :: struct {
@@ -71,6 +75,9 @@ key_bindings :: proc() -> []Key_Binding {
 		Key_Binding{keys = "Esc", action = "Close a dialog or popover, or clear the search box", scope = .Dialogs_And_Lists},
 		Key_Binding{keys = "Left, Right", action = "Move the text size slider in 5% steps", scope = .Settings},
 	)
+	for hint in components.ROOM_GRAPH_KEYS {
+		append(&out, Key_Binding{keys = hint.keys, action = hint.action, scope = .Room_Graph})
+	}
 	return out[:]
 }
 

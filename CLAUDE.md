@@ -709,6 +709,8 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   Settings and the other way round.
 - Shortcuts are registered at the top of `view`, before other widgets,
   so they win over widgets built later.
+- A component with keys of its own lists them as `Key_Hint`s
+  (`ROOM_GRAPH_KEYS`), and `key_bindings` adds them under their scope.
 
 ### Room search
 
