@@ -796,6 +796,9 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Area notes (`area_notes_test`): the inspector's data, adding a note
   (blank drafts add nothing; the saved file is read back), a draft dropped
   with its area, loose files refused, and a failed save shown.
+- Filters (`filters_test`): `shows`, re-marking rooms and areas and the
+  inspector's counts as boxes change, Reset, accepted findings shown on
+  request, filters kept across a reload, and changes with no world open.
 - Room search (`search_test`): ranking (vnum, exact, prefix, contains),
   `#` and spaces, duplicate vnums across areas, the limit and total, blank
   queries, Latin-1 names and picker order in the index, and searching and
