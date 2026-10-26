@@ -32,6 +32,7 @@ State :: struct {
 	graph:         components.Room_Graph_State,
 	center:        Center_View,
 	area_map:      components.Area_Map_State,
+	note_draft:    string, // The note being written about the area shown
 	generation:    int,    // Bumped by every load; older results are dropped
 	loading_path:  string, // What is loading, or ""
 	error:         string, // The last error to show, or ""
@@ -46,6 +47,7 @@ show_area :: proc(s: ^State, area: int) {
 	s.area = area
 	s.selected_room = -1
 	s.graph = components.room_graph_init()
+	set_text(&s.note_draft, "") // A draft is about the area it was written for
 }
 
 // Whether a load is in progress.

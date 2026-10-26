@@ -34,6 +34,7 @@ mudclarity/
 │   ├── world.odin           # World: workspace + layouts, marks, labels, room lookup, findings
 │   ├── world_map.odin       # The area map's data: nodes, links between areas, positions
 │   ├── inspector_data.odin  # Resolve the selected room's exits and findings for the inspector
+│   ├── area_inspector_data.odin # The shown area's header, open findings and notes
 │   ├── area_order.odin      # Area picker labels and order (by name, ignoring "The"/"A"/"An")
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
@@ -42,7 +43,7 @@ mudclarity/
 │   └── *_test.odin
 ├── components/              # package components: reusable GUI pieces
 │   ├── common.odin          # heading, caption, stat, banner (generic over $Msg)
-│   ├── text.odin            # display_text: Latin-1 file text -> safe UTF-8
+│   ├── text.odin            # display_text (Latin-1 file text), display_user_text (UTF-8 notes)
 │   ├── graph_camera.odin    # Cells <-> graph <-> screen; zoom at cursor; fit
 │   ├── room_graph.odin      # Room graph: state, Msg, update, view (input)
 │   ├── room_graph_paint.odin # Painting rooms, exits and labels on the canvas
@@ -50,6 +51,8 @@ mudclarity/
 │   ├── area_map_paint.odin  # Painting the area map
 │   ├── canvas_gestures.odin # Press, pan and zoom shared by the map canvases
 │   ├── room_inspector.odin  # Room inspector panel (generic over $Msg; see GUI structure)
+│   ├── area_inspector.odin  # Area inspector panel: facts, findings, notes and a note box
+│   ├── inspector_panel.odin # The inspectors' shared frame (panel, section, text width)
 │   └── *_test.odin
 ├── layout/                  # package layout: room grid placement, no GUI code
 │   ├── layout.odin          # Layout, Cell, Edge; compute / destroy / room_at
@@ -569,6 +572,18 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   area). Following an exit in the inspector also goes back to the room
   graph.
   The map keeps its camera while hidden; a new world refits it.
+- While the map is up, the left panel is the **area inspector** for the
+  area shown: file, name, rooms, levels, vnums, type, climate, open
+  findings, credits, builders, an Open rooms button, and the area's notes
+  (`kind = "area"`, vnum 0, as `mudclarity note` writes them) with a box
+  to add one. Adding edits the review document in `step` and returns
+  `Save_Review`; `command_for` saves on the GUI thread (the file is a few
+  hundred KB, and the document must not change while a worker writes it)
+  and reports failure as `Review_Saved`. Loose files have no review file,
+  so the box is replaced by a hint to open the `area.lst`. A draft is
+  dropped when another area is shown.
+- Notes are UTF-8 typed by the user (or edited by hand), so they are drawn
+  through `display_user_text`, not `display_text` (which is for Latin-1).
 - `World.area_map` (`app/world_map.odin`) is built once per load; the view
   only fills in the camera and the current area. Positions come from
   `layout.force_layout`, which lays out each connected group on its own and

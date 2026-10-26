@@ -14,8 +14,8 @@ import "../components"
 import "../formats"
 
 // A world is open: its name and area picker, summary counts, files that
-// failed to load, and the room inspector beside the chosen area's graph or
-// the map of areas.
+// failed to load, and the room inspector beside the chosen area's graph,
+// or the area inspector beside the map of areas.
 world_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	th := ctx.theme
 	world := s.world
@@ -35,8 +35,19 @@ world_view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		append(&children, components.caption(ctx, "No areas loaded."))
 		return skald.col(..children[:], spacing = th.spacing.md, cross_align = .Stretch)
 	}
+	inspector: skald.View
+	if s.center == .Areas {
+		events := components.Area_Inspector_Events(Msg) {
+			on_draft = note_draft_changed,
+			add      = Note_Added{},
+			open     = Area_Map{components.Area_Opened{s.area}},
+		}
+		inspector = components.area_inspector_view(ctx, area_inspector_data(s), events)
+	} else {
+		inspector = components.room_inspector_view(ctx, inspector_data(s), exit_followed)
+	}
 	body := skald.row(
-		components.room_inspector_view(ctx, inspector_data(s), exit_followed),
+		inspector,
 		skald.flex(1, center_view(s, ctx)),
 		spacing = th.spacing.md,
 		cross_align = .Stretch,
@@ -135,6 +146,11 @@ wrap_area_map :: proc(m: components.Area_Map_Msg) -> Msg {
 @(private = "file")
 wrap_graph :: proc(m: components.Room_Graph_Msg) -> Msg {
 	return Graph{msg = m}
+}
+
+@(private = "file")
+note_draft_changed :: proc(text: string) -> Msg {
+	return Note_Draft_Changed{text = text}
 }
 
 @(private = "file")

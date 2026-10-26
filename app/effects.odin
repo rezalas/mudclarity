@@ -10,6 +10,8 @@ import "core:strings"
 
 import "gui:skald"
 
+import "../workspace"
+
 // The Skald Command that carries out an effect.
 command_for :: proc(effect: Effect) -> skald.Command(Msg) {
 	switch e in effect {
@@ -25,12 +27,25 @@ command_for :: proc(effect: Effect) -> skald.Command(Msg) {
 		return skald.cmd_thread(Msg, e, load_world)
 	case Follow_System_Theme:
 		return skald.cmd_set_theme(Msg, skald.theme_system())
+	case Save_Review:
+		// The file is small (~300 KB for the whole Riftshadow world) and
+		// the document must not change while it is written, so it is
+		// saved here, on the GUI thread, rather than on a worker.
+		return skald.cmd_delay(0, save_review(e))
 	case Quit:
 		return skald.cmd_quit(Msg)
 	case Redraw_Soon:
 		return skald.cmd_delay(0, Msg(Redraw{}))
 	}
 	return {}
+}
+
+// Save the review file; the result as a Msg for update.
+save_review :: proc(e: Save_Review) -> Msg {
+	if err := workspace.save(e.ws); err != nil {
+		return Review_Saved{error = workspace.error_message(err, runtime.heap_allocator())}
+	}
+	return Review_Saved{}
 }
 
 // The file dialog's result. Its path is heap-owned and ours to free; the

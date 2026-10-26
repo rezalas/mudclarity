@@ -10,6 +10,7 @@ import "core:strings"
 
 import "gui:skald"
 
+import "../clarity"
 import "../components"
 import "../workspace"
 
@@ -121,6 +122,18 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		m := out.world.area_map
 		out.area_map = components.area_map_update(out.area_map, v.msg, m.positions, m.rooms)
 
+	case Note_Draft_Changed:
+		set_text(&out.note_draft, v.text)
+
+	case Note_Added:
+		return add_area_note(&out)
+
+	case Review_Saved:
+		defer delete(v.error, runtime.heap_allocator())
+		if v.error != "" {
+			set_text(&out.error, v.error)
+		}
+
 	case Exit_Followed:
 		// Following an exit shows its room, so it leaves the area map.
 		effect: Effect
@@ -144,9 +157,28 @@ step :: proc(s: State, m: Msg) -> (State, Effect) {
 		out.world = nil
 		set_text(&out.error, "")
 		set_text(&out.loading_path, "")
+		set_text(&out.note_draft, "")
 		return out, Quit{}
 	}
 	return out, nil
+}
+
+// Add the draft as a note on the area shown, in the review document, and
+// ask for the file to be saved. A blank draft adds nothing.
+@(private = "file")
+add_area_note :: proc(s: ^State) -> (State, Effect) {
+	text := strings.trim_space(s.note_draft)
+	if s.world == nil || text == "" {
+		return s^, nil
+	}
+	ws := s.world.ws
+	err := workspace.add_note(ws, ws.names[s.area], clarity.KIND_AREA, 0, text, workspace.today(context.temp_allocator))
+	if err != nil {
+		set_text(&s.error, workspace.error_message(err, context.temp_allocator))
+		return s^, nil
+	}
+	set_text(&s.note_draft, "")
+	return s^, Save_Review{ws}
 }
 
 // Select the room with vnum `target`, switching area if it is in another

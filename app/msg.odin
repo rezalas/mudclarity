@@ -6,6 +6,7 @@
 package app
 
 import "../components"
+import "../workspace"
 
 Msg :: union {
 	Open_Requested,
@@ -17,6 +18,9 @@ Msg :: union {
 	Graph,
 	Center_Chosen,
 	Area_Map,
+	Note_Draft_Changed,
+	Note_Added,
+	Review_Saved,
 	Exit_Followed,
 	Dismiss_Error,
 	Theme_Changed,
@@ -66,6 +70,20 @@ Area_Map :: struct {
 	msg: components.Area_Map_Msg,
 }
 
+// The area inspector's note box changed (text in the frame arena).
+Note_Draft_Changed :: struct {
+	text: string,
+}
+
+// The area inspector's Add note button.
+Note_Added :: struct {}
+
+// area.clarity was written. `error` is "" on success, else heap-allocated
+// text that now belongs to update.
+Review_Saved :: struct {
+	error: string,
+}
+
 // An exit's target was clicked in the inspector: show that room.
 Exit_Followed :: struct {
 	target: int, // Vnum
@@ -91,6 +109,7 @@ Effect :: union {
 	Show_Open_Dialog,
 	Load_Request,
 	Follow_System_Theme,
+	Save_Review,
 	Quit,
 	Redraw_Soon,
 }
@@ -105,6 +124,11 @@ Load_Request :: struct {
 }
 
 Follow_System_Theme :: struct {}
+
+// Write the world's review file (area.clarity) after an edit.
+Save_Review :: struct {
+	ws: ^workspace.Workspace,
+}
 
 Quit :: struct {}
 
