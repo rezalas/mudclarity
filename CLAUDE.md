@@ -43,6 +43,7 @@ mudclarity/
 │   ├── settings_view.odin   # The Settings dialog, button and shortcut
 │   ├── keys.odin            # Every keyboard shortcut, in one table; chord_text
 │   ├── help_view.odin       # The Help dialog (F1, Ctrl+/, ?), listing the keys
+│   ├── regions.odin         # F6 / Shift+F6: focus the toolbar, inspector or map
 │   ├── search_view.odin     # The search box and its results popover
 │   ├── loading.odin         # load_world worker (cmd_thread)
 │   ├── view.odin            # Root view; startup paths
@@ -710,6 +711,14 @@ directory (`os.user_config_dir`: `%LOCALAPPDATA%` on Windows,
   Settings and the other way round.
 - Shortcuts are registered at the top of `view`, before other widgets,
   so they win over widgets built later.
+- **F6 / Shift+F6** move focus between the World screen's regions in
+  reading order (`regions.odin`): the toolbar (the area picker; the
+  search box counts as the toolbar), the inspector (its scroll area,
+  which scrolls with the arrow and page keys and leads on to its links
+  with Tab) and the map (whichever canvas is shown). Each shows focus: the
+  canvases draw a ring, and the inspector panel, whose scroll can't, gets
+  an accent border in a margin that is always there. The findings log
+  (#12) will be a fourth region.
 - A component with keys of its own lists them as `Key_Hint`s
   (`ROOM_GRAPH_KEYS`), and `key_bindings` adds them under their scope.
 

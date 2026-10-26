@@ -23,8 +23,9 @@ view :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 		skald.shortcut(ctx, SETTINGS_SHORTCUT, Msg(Settings_Shown{true}))
 	}
 	help_shortcuts(s, ctx)
-	if s.screen == .World && !s.settings_open && !s.help_open {
+	if s.screen == .World && s.world != nil && !s.settings_open && !s.help_open {
 		search_shortcuts(ctx)
+		region_shortcuts(s, ctx)
 	}
 	text_scale_shortcuts(s, ctx)
 

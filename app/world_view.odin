@@ -105,7 +105,7 @@ toolbar :: proc(s: State, ctx: ^skald.Ctx(Msg)) -> skald.View {
 	// out of room at a large text size.
 	return skald.wrap_row(
 		skald.segmented(ctx, CENTER_LABELS[:], int(s.center), center_chosen),
-		skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, width = 360 * components.ui_scale(th)),
+		skald.select(ctx, s.world.labels[s.area], s.world.picker_labels, area_picked, id = skald.hash_id(AREA_PICKER_ID), width = 360 * components.ui_scale(th)),
 		search_box(s, ctx),
 		search_results(s, ctx),
 		filters_control(s, ctx),

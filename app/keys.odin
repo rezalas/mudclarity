@@ -54,6 +54,8 @@ SETTINGS_SHORTCUT :: skald.Shortcut{key = .Comma, mods = {COMMAND_KEY}}
 LARGER_TEXT_SHORTCUTS := [?]skald.Shortcut{{key = .Equals, mods = {COMMAND_KEY}}, {key = .Equals, mods = {COMMAND_KEY, .Shift}}}
 SMALLER_TEXT_SHORTCUT :: skald.Shortcut{key = .Minus, mods = {COMMAND_KEY}}
 RESET_TEXT_SHORTCUT :: skald.Shortcut{key = .N0, mods = {COMMAND_KEY}}
+// Move focus to the next or previous region of the World screen.
+REGION_SHORTCUTS := [?]skald.Shortcut{{key = .F6}, {key = .F6, mods = {.Shift}}}
 // Jump to room search: Ctrl+F (Cmd+F) anywhere, `/` when not typing.
 SEARCH_SHORTCUTS := [?]skald.Shortcut{{key = .F, mods = {COMMAND_KEY}}, {key = .Slash}}
 
@@ -76,6 +78,7 @@ key_bindings :: proc() -> []Key_Binding {
 		Key_Binding{chords = one(SMALLER_TEXT_SHORTCUT), action = "Smaller text", scope = .Anywhere},
 		Key_Binding{chords = one(RESET_TEXT_SHORTCUT), action = "Text size back to 100%", scope = .Anywhere},
 		Key_Binding{chords = SEARCH_SHORTCUTS[:], action = "Find a room: jump to the search box", scope = .Anywhere},
+		Key_Binding{chords = REGION_SHORTCUTS[:], action = "Move to the next or previous part of the screen: the toolbar, the inspector, the map", scope = .Anywhere},
 		Key_Binding{keys = "Tab, Shift+Tab", action = "Move to the next or previous button, box or list", scope = .Dialogs_And_Lists},
 		Key_Binding{keys = "Enter, Space", action = "Press the focused button or tick the focused box", scope = .Dialogs_And_Lists},
 		Key_Binding{keys = "Up, Down, Enter", action = "Choose in an open dropdown, such as the area picker", scope = .Dialogs_And_Lists},
