@@ -859,6 +859,11 @@ Helpers several test suites need (`area_text`, `BASE_ROOMS`, `temp_dir`,
 - Area notes (`area_notes_test`): the inspector's data, adding a note
   (blank drafts add nothing; the saved file is read back), a draft dropped
   with its area, loose files refused, and a failed save shown.
+- Settings in the GUI (`settings_test`): starting from a store and its
+  warning, choosing a theme (applied and saved once; the same choice does
+  nothing), only a followed system theme tracking the OS, `theme_for`,
+  `save_settings` (written, newer file left alone, no store or folder),
+  and a failed save shown.
 - Filters (`filters_test`): `shows`, re-marking rooms and areas and the
   inspector's counts as boxes change, Reset, accepted findings shown on
   request, filters kept across a reload, and changes with no world open.
