@@ -148,8 +148,8 @@ area_map_view :: proc(d: Area_Map_Data, ctx: ^skald.Ctx(Area_Map_Msg)) -> skald.
 	cursor := skald.Cursor_Shape.Move if d.state.is_panning else .Default
 	return skald.col(
 		skald.row(
-			skald.button(ctx, "Fit", Area_Map_Msg(Fitted{{last.w, last.h}}), bg = th.color.surface, fg = th.color.fg),
-			caption(ctx, "Each circle is an area; lines are exits and portals between areas. Click an area to see it, double-click to open its rooms."),
+			zoom_buttons(ctx, last, d.state.camera.zoom),
+			hint(ctx, "Each circle is an area; lines are exits and portals between areas. Click an area to see it, double-click to open its rooms."),
 			spacing = th.spacing.sm,
 			cross_align = .Center,
 		),

@@ -42,3 +42,28 @@ canvas_gestures :: proc(ctx: ^skald.Ctx($Msg), id: skald.Widget_ID, last: skald.
 canvas_local :: proc(ctx: ^skald.Ctx($Msg), last: skald.Rect) -> [2]f32 {
 	return ctx.input.mouse_pos - {last.x, last.y}
 }
+
+// How much one press of a zoom button zooms.
+ZOOM_STEP :: f32(1.25)
+
+// Zoom out, zoom in and Fit buttons for a map canvas whose rect is `last`
+// and whose camera is at `zoom`. Zooming keeps the canvas's centre in
+// place. The message types are the room graph's, as for the gestures.
+zoom_buttons :: proc(ctx: ^skald.Ctx($Msg), last: skald.Rect, zoom: f32) -> skald.View {
+	th := ctx.theme
+	centre := [2]f32{last.w, last.h} / 2
+	return skald.row(
+		skald.button(ctx, "−", Msg(Zoomed{1 / ZOOM_STEP, centre}), bg = th.color.surface, fg = th.color.fg, disabled = zoom <= MIN_ZOOM),
+		skald.button(ctx, "+", Msg(Zoomed{ZOOM_STEP, centre}), bg = th.color.surface, fg = th.color.fg, disabled = zoom >= MAX_ZOOM),
+		skald.button(ctx, "Fit", Msg(Fitted{{last.w, last.h}}), bg = th.color.surface, fg = th.color.fg),
+		spacing = th.spacing.xs,
+	)
+}
+
+// A canvas's one-line hint beside its buttons. It takes the rest of the
+// row and is cut short with "..." when that's too narrow, so the canvas
+// below never has to be wider than the window.
+hint :: proc(ctx: ^skald.Ctx($Msg), text: string) -> skald.View {
+	th := ctx.theme
+	return skald.flex(1, skald.text(text, th.color.fg_muted, th.font.size_md, overflow = .Ellipsis))
+}

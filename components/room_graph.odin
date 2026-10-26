@@ -195,8 +195,8 @@ room_graph_view :: proc(d: Room_Graph_Data, ctx: ^skald.Ctx(Room_Graph_Msg)) -> 
 			skald.button(ctx, "Up", Room_Graph_Msg(Level_Changed{s.level + 1}), disabled = s.level >= d.layout.max.z, bg = th.color.surface, fg = th.color.fg),
 		)
 	}
-	append(&controls, skald.button(ctx, "Fit", Room_Graph_Msg(Fitted{{last.w, last.h}}), bg = th.color.surface, fg = th.color.fg))
-	append(&controls, caption(ctx, "Drag to pan, scroll to zoom, click a room to select it."))
+	append(&controls, zoom_buttons(ctx, last, d.state.camera.zoom))
+	append(&controls, hint(ctx, "Drag to pan, scroll to zoom, click a room to select it."))
 
 	cursor := skald.Cursor_Shape.Move if d.state.is_panning else .Default
 	return skald.col(

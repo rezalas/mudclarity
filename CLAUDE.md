@@ -554,8 +554,11 @@ mudclarity issue  area.lst <file> <kind> <vnum> <title>
   triangles on rooms with exits to other levels, and stubs for exits that
   leave the area.
 - Drag empty space to pan, scroll to zoom at the cursor, click a room to
-  select it (reported to `app` as `Room_Clicked`); Up/Down change level and
-  Fit refits. Labels appear only when zoomed in enough to read.
+  select it (reported to `app` as `Room_Clicked`); Up/Down change level,
+  − and + zoom about the canvas centre (`zoom_buttons`, shared with the
+  area map) and Fit refits. Labels appear only when zoomed in enough to
+  read. The hint beside the buttons is cut short with "…" (`hint`), so a
+  narrow window never makes the canvas wider than it.
 - A newly shown area fits itself once the canvas has a size. Skald redraws
   only on events, so a load returns `Redraw_Soon` to get that frame.
 - Paint gets theme colours through `Room_Graph_Data.colors` (the painter has
